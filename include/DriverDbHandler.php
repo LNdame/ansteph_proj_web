@@ -455,7 +455,7 @@ class DriverDbHandler {
   //createing the upload url
     $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
 
-    $imageArray = array( 'driver1'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'back' => $upload_url."car_back.jpg" );
+    $imageArray = array( 'driver'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'back' => $upload_url."car_back.jpg" );
   $response = array();
 
 

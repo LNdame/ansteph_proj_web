@@ -155,7 +155,7 @@ class JobDbHandler {
   public function updateJourneyRequest($id, $code)
   {
   $stmt = $this->conn->prepare("UPDATE `journey_request` set `jr_status` = ? WHERE `id` = ?");
-  $stmt->bind_param("is",$code, $id);
+  $stmt->bind_param("ii",$code, $id);
   $res=  $stmt->execute();
   $stmt->close();
       if($res){
@@ -209,8 +209,104 @@ $stmt->bind_param("s",$email);
 
 
 
+  public function createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed=1, $jr_id, $tc_id)
+  {
+    $hasFareAccepted =0;
+   if ($proposedFare == $counterOffer) {
+        $hasFareAccepted =1;
+    }else{
+        $hasFareAccepted =0;
+    }
+
+    //crafting the statement
+      $stmt = $this->conn->prepare("INSERT INTO `journey_request_response` (`jre_initial_fare_accepted`, `jre_proposed_fare`, `jre_counter_offer`,
+        `jre_call_allowed`, `jre_jr_id`, `jre_td_id`) VALUES (?,?,?,?,?,?) ");
+
+      //Binding the params
+      $stmt->bind_param("iiiiis",$hasFareAccepted,$proposedFare,$counterOffer, $callAllowed, $jr_id,$tc_id);
+
+      $result =$stmt->execute();
+      $new_td_id =$stmt->insert_id;
+
+      //closing the statement
+      $stmt->close();
+
+      if($result){
+
+        return CREATED_SUCCESSFULLY;
+      }else{
+        return CREATE_FAILED;
+      }
 
 
+  }
+
+
+  public function getJourneyRequestReponse($jr_id)
+  {
+
+
+   $sqlquery = "SELECT * FROM `journey_response` WHERE JorID = ?" ;
+//$sql = "select `jr`.`id` AS `id`,`td`.`id` AS `TaxiID`,`jr`.`jre_jr_id` AS `JorID`,`jr`.`jre_proposed_fare` AS `jre_proposed_fare`,`jr`.`jre_counter_offer` AS `jre_counter_offer`,`td`.`td_name` AS `td_name`,`td`.`td_company_name` AS `td_company_name`,`td`.`td_email` AS `td_email`,`td`.`td_mobile` AS `td_mobile`,`c`.`co_name` AS `co_name`,`dp`.`car_picture_url` AS `car_picture_url`,`dp`.`image_tag` AS `image_tag` from (((`journey_request_response` `jr` join `taxi_driver` `td` on((`jr`.`jre_td_id` = `td`.`id`))) left join `driver_profile_image` `dp` on((`td`.`id` = `dp`.`taxi_driver_id`))) join `company` `c` on((`td`.`company_id` = `c`.`id`))) where ((`dp`.`image_tag` = \'driver2\') or isnull(`dp`.`image_tag`))";
+
+
+    $stmt = $this->conn->prepare($sqlquery);
+
+      //Binding the params
+    $stmt->bind_param("i", $jr_id);
+
+    $stmt->execute();
+  //  $stmt->store_result();
+
+    $jobresponses = $stmt->get_result();
+    $stmt->close();
+
+    return $jobresponses;
+
+
+
+
+  }
+
+
+
+public function createAcceptedRequest($pickupAddr, $destAddr, $pickupCoord, $destCoord, $acceptedFare ,$city,$jr_id,$tc_id,$td_id)
+
+{
+  //crafting the statement
+    $stmt = $this->conn->prepare("INSERT INTO `accepted_request`( `ar_pickup_add`, `ar_destination_add`,
+   `ar_pickup_coord`, `ar_destination_coord`, `ar_final_fare`, `ar_city`,`ar_status`,`ar_jr_id`, `ar_tc_id`, `ar_td_id`) VALUES (?,?,?,?,?,?,1,?,?,?) ");
+
+    //Binding the params
+    $stmt->bind_param("ssssisiss",$pickupAddr, $destAddr, $pickupCoord, $destCoord, $acceptedFare ,$city,$jr_id,$tc_id,$td_id);
+
+    $result =$stmt->execute();
+    $new_td_id =$stmt->insert_id;
+
+    //closing the statement
+    $stmt->close();
+
+    if($result){
+
+      return CREATED_SUCCESSFULLY;
+    }else{
+      return CREATE_FAILED;
+    }
+
+
+}
+
+  public function updateAcceptedRequest($id,$code)
+  {
+    $stmt = $this->conn->prepare("UPDATE accepted_request set ar_status = ? WHERE id = ?");
+  $stmt->bind_param("ii",$code, $id);
+  $res= $stmt->execute();
+    if($res){
+      return UPDATED;
+    }else{
+      return CREATE_FAILED;
+    }
+  }
 
 
 

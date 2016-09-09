@@ -723,11 +723,8 @@ $app->get('/retrievetcuser/:mobile/:password',
 
 
 
-    $app->put('/updatejob', function() use ($app){
-      verifyRequiredParams(array('code','id'));
-      //get the params
-      $code = $app->request->put('code');
-      $id = $app->request->put('id');
+    $app->put('/updatejob/:id/:code', function($id,$code){
+
 
       $response = array();
       $db= new JobDbHandler();
@@ -744,6 +741,139 @@ $app->get('/retrievetcuser/:mobile/:password',
       echoResponse(200, $response);
     });
 
+
+    $app->post('/createjobresponse', function () use ($app){
+      //check the params  name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$apikey
+      verifyRequiredParams(array('proposedFare',  'counterOffer', 'callAllowed',
+      'jrID',  'tcID'));
+    //  verifyRequiredParams(array('pickupAddr','destAddr','pickupTime','proposedFare',
+    //  'pickupCoord', 'destCoord', 'tcID'));
+
+      //read the param
+
+      $proposedFare = $app->request->post('proposedFare');
+      $counterOffer = $app->request->post('counterOffer');
+      $callAllowed = $app->request->post('callAllowed');
+      $jr_id = $app->request->post('jrID');
+      $tc_id = $app->request->post('tcID');
+
+
+        $response = array();
+        $db = new JobDbHandler();
+      //$result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, $proposedFare, 1,$pickupCoord, $destCoord,$tc_id,1);
+      $result = $db->createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed, $jr_id, $tc_id);
+    //  $result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, 40 , 1,$pickupCoord, $destCoord,$tc_id,1);
+      if($result== CREATED_SUCCESSFULLY){
+
+          $response["error"] = false;
+          $response["message"] = "Request Sent...Now awaiting response";
+      }
+      else
+      {
+        $response["error"] = true;
+        $response["message"] = "Oops! An error occurred while sending the request";
+      }
+
+      //echo json response
+      echoResponse(201, $response);
+    }
+
+    );
+
+    $app->get('/retrievejour_response/:jrID', function($jr_id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->getJourneyRequestReponse($jr_id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["TaxiID"] = $job["TaxiID"];
+                $tmp["JorID"] = $job["JorID"];
+              $tmp["jre_proposed_fare"] = $job["jre_proposed_fare"];
+              $tmp["jre_counter_offer"] = $job["jre_counter_offer"];
+              $tmp["td_name"] = $job["td_name"];
+              $tmp["td_company_name"] = $job["td_company_name"];
+              $tmp["td_email"] = $job["td_email"];
+              $tmp["td_mobile"] = $job["td_mobile"];
+              $tmp["co_name"] = $job["co_name"];
+              $tmp["car_picture_url"] = $job["car_picture_url"];
+              $tmp["image_tag"] = $job["image_tag"];
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
+
+
+    $app->post('/createacceptedrequest', function () use ($app){
+      //check the params  name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$apikey
+      verifyRequiredParams(array('pickupAddr','destAddr', 'pickupCoord', 'destCoord','acceptedFare', 'city', 'jrID','tcID', 'tdID'
+      ));
+    //  verifyRequiredParams(array('pickupAddr','destAddr','pickupTime','proposedFare',
+    //  'pickupCoord', 'destCoord', 'tcID'));
+
+      //read the param
+      $pickupAddr = $app->request->post('pickupAddr');
+      $destAddr = $app->request->post('destAddr');
+      $pickupCoord = $app->request->post('pickupCoord');
+      $destCoord = $app->request->post('destCoord');
+      $acceptedFare = $app->request->post('acceptedFare');
+$city = $app->request->post('city');
+      $tc_id = $app->request->post('tcID');
+      $jr_id = $app->request->post('jrID');
+$td_id = $app->request->post('tdID');
+
+        $response = array();
+        $db = new JobDbHandler();
+      //$result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, $proposedFare, 1,$pickupCoord, $destCoord,$tc_id,1);
+      $result = $db->createAcceptedRequest($pickupAddr, $destAddr, $pickupCoord, $destCoord, $acceptedFare ,$city,$jr_id,$tc_id,$td_id);
+    //  $result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, 40 , 1,$pickupCoord, $destCoord,$tc_id,1);
+      if($result== CREATED_SUCCESSFULLY){
+
+          $response["error"] = false;
+          $res =$db->updateJourneyRequest($jr_id,1);
+          $response["message"] = "Request Sent...Now awaiting response";
+      }
+      else
+      {
+        $response["error"] = true;
+        $response["message"] = "Oops! An error occurred while sending the request";
+      }
+
+      //echo json response
+      echoResponse(201, $response);
+    }
+
+    );
+
+    $app->put('/updateacceptedrequest/:id/:code', function($id,$code) {
+    //  verifyRequiredParams(array('code','id'));
+      //get the params
+    //  $code = $app->request->put('code');
+      //$id = $app->request->put('id');
+
+      $response = array();
+      $db= new JobDbHandler();
+
+      $result =$db->updateAcceptedRequest($id,$code);
+      if($result==UPDATED)
+      {
+        $response["error"] = false;
+        $response["message"] = "Request updated";
+      }else{
+        $response["error"] = true;
+        $response["message"] = "Oops! Request failed to update";
+      }
+      echoResponse(200, $response);
+    });
 
 
 
