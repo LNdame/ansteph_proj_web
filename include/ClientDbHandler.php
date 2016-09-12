@@ -88,6 +88,7 @@ class ClientDbHandler {
     /* ------------- `taxi_client` table method ------------------ */
 	public function createTaxiClient($name, $email, $mobile, $password, $otp='55555') //++
 	{
+
 		 require_once 'PassHash.php';
 
 		if(!$this->isTaxiClientExists($mobile))
@@ -329,6 +330,64 @@ class ClientDbHandler {
       $stmt->bind_param("ss",$otp, $td_id);
       $result=$stmt->execute();
       return $result;
+    }
+
+
+  /* ------------- `retrieve password` table method ------------------ */
+    public function createNewPassword ($mobile)
+    {
+        //Getting the send_sms.php file
+        require_once 'send_sms.php';
+
+        require_once 'PassHash.php';
+
+        if(!$this->isTaxiClientExists($mobile))
+    		{
+            $sms = new BeeCabSMSMobileAPI();
+            $prov_password = "prov_".rand(10000, 99999);
+
+            //Encrypting the password
+            $password_hash = PassHash::hash($prov_password);
+            echo "$prov_password";
+            echo "$password_hash";
+            //send the new password via send_sms
+            $msg = "Your password has been temporarily changed to: ".$prov_password. " BeeCab";
+            $sms->sendSms("$mobile",$msg);
+
+            //update the record
+            $stmt = $this->conn->prepare("UPDATE taxi_client set tc_password = ? WHERE tc_mobile = ?");
+            $stmt->bind_param("ss",$password_hash, $mobile);
+            $res=  $stmt->execute();
+
+            if($res){
+              return UPDATED;
+            }else{
+              return CREATE_FAILED;
+            }
+
+        }else{
+          return CREATE_FAILED;
+        }
+
+    }
+
+
+    public function updateChangedPassword($password, $tc_id)
+    {
+      require_once 'PassHash.php';
+      //Encrypting the password
+      $password_hash = PassHash::hash($password);
+
+      //update the record
+      $stmt = $this->conn->prepare("UPDATE taxi_client set tc_password = ? WHERE id = ?");
+      $stmt->bind_param("ss",$password_hash, $tc_id);
+      $res=  $stmt->execute();
+
+      if($res){
+        return UPDATED;
+      }else{
+        return CREATE_FAILED;
+      }
     }
 
   /* ------------- `journey_request` table method ------------------ */

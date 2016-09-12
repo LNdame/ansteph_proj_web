@@ -292,6 +292,41 @@ $app->get('/retrievetcuser/:mobile/:password',
   }
 );
 
+$app->put('/lostpassword/:mobile', function($mobile){
+
+
+  $response = array();
+  $db= new ClientDbHandler();
+
+  $result =$db->createNewPassword($mobile);
+  if($result==UPDATED)
+  {
+    $response["error"] = false;
+    $response["message"] = "Password updated";
+  }else{
+    $response["error"] = true;
+    $response["message"] = "Oops! Request failed to update";
+  }
+  echoResponse(200, $response);
+});
+
+$app->put('/changepassword/:password/:tcID', function($password, $tcID){
+
+
+  $response = array();
+  $db= new ClientDbHandler();
+
+  $result =$db->updateChangedPassword($password, $tcID);
+  if($result==UPDATED)
+  {
+    $response["error"] = false;
+    $response["message"] = "Password updated";
+  }else{
+    $response["error"] = true;
+    $response["message"] = "Oops! Request failed to update";
+  }
+  echoResponse(200, $response);
+});
 
 
   /* -------------********************* `Driver realted routes**************************------------------ */

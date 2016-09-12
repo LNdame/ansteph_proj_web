@@ -14,6 +14,8 @@ class DriverDbHandler {
         //Initializing our connection link of this class
         //by calling the method connect of DbConnect class
         $this->conn = $db->connect();
+
+          
     }
 
 
@@ -71,8 +73,6 @@ class DriverDbHandler {
         * @param String $api_key user api key
         * @return boolean
         */
-
-
 
        public function isValidTDApiKey($api_key) {
            $stmt = $this->conn->prepare("SELECT id from taxi_driver WHERE api_key = ?");

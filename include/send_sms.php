@@ -1,5 +1,6 @@
 <?php
-   class MyMobileAPI
+
+class BeeCabSMSMobileAPI
 {
 
     public function __construct() {
@@ -7,10 +8,10 @@
         $this->username = 'ansteph'; //your login username
         $this->password = 'Ferenzo09'; //your login password
     }
-    
+
     public function checkCredits() {
         $data = array(
-            'Type' => 'credits', 
+            'Type' => 'credits',
             'Username' => $this->username,
             'Password' => $this->password
         );
@@ -23,10 +24,10 @@
             return $response->data->credits;
         }
     }
-    
+
    public function sendSms($mobile_number, $msg) {
         $data = array(
-            'Type' => 'sendparam', 
+            'Type' => 'sendparam',
             'Username' => $this->username,
             'Password' => $this->password,
             'numto' => $mobile_number, //phone numbers (can be comma seperated)
@@ -36,7 +37,7 @@
         $response = $this->querySmsServer($data);
         return $this->returnResult($response);
     }
-    
+
     // query API server and return response in object format
     private function querySmsServer($data, $optional_headers = null) {
 
@@ -67,28 +68,21 @@
             $return->pass = 'CallResult: '.FALSE. '</br>';
             $return->msg = 'Error: '.$response->call_result->error;
         }
-	echo $return->pass; 
-	echo $return->msg; 
-        return $return; 
+	echo $return->pass;
+	echo $return->msg;
+        return $return;
     }
-    
+
 }
 
-/*
-if(isset($_POST["mobile"]) && isset($_POST["message"])){
-	
-	$number = $_POST["mobile"];
-	$msg = $_POST["message"];
-	
-	//Execute script
-$test = new MyMobileAPI();
-$test->sendSms($number, $msg);
-//$test->sendSms('+27725220658','Test Message from Andre local server'); //Send SMS
-$test->checkcredits(); //Check your credit balance
- echo $number.' '. $msg;	
-	
-}else{
-	echo "Missing fields";
-}
-*/
+
+//Execute script
+/*$sms = new BeeCabSMSMobileAPI();
+$prov_password = "prov_".rand(10000, 99999);
+$msg = "Your password has been temporarily changed to: ".$prov_password. " BeeCab";
+$mobile='0725220658';
+$sms->sendSms($mobile,$msg); //Send SMS
+$sms->checkcredits(); //Check your credit balance*/
+
+
 ?>
