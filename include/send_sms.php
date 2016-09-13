@@ -68,8 +68,8 @@ class BeeCabSMSMobileAPI
             $return->pass = 'CallResult: '.FALSE. '</br>';
             $return->msg = 'Error: '.$response->call_result->error;
         }
-	echo $return->pass;
-	echo $return->msg;
+	        //echo $return->pass;
+	        //echo $return->msg;
         return $return;
     }
 

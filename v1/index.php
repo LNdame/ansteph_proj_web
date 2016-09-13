@@ -184,7 +184,7 @@ $app->delete(
  * ----------- METHODS WITHOUT AUTHENTICATION ---------------------------------
  */
 
-  /* -------------************************** `Client realted routes**************************------------------ */
+  /* -------------************************** `Client related routes**************************------------------ */
 
 $app->post(
     '/register_client',
@@ -198,37 +198,42 @@ $app->post(
 	   $email = $app->request->post('email');
 	   $mobile = $app->request->post('mobile');
 	   $password = $app->request->post('password');
-
+     $gender = $app->request->post('gender');
 	   $otp = rand(10000, 99999);
 	   //$otp = 11111;
 	   //validating email address
 	   validateEmail($email);
 	   $db = new ClientDbHandler();
 
-	   $res =$db->createTaxiClient($name, $email, $mobile,$password,$otp);
+	   $res =$db->createTaxiClient($name, $email, $mobile,$password,$otp,$gender);
 
 	   if($res == USER_CREATED_SUCCESSFULLY){
 
-		//send otp
-		// $smsSender = new MyMobileAPI();
-		//$smsSender->sendSms($mobile, $otp);
+
 		//$smsSender->checkCredits();
 
+      
 
 	   	 		$response["error"] = false;
 				//$response["sms"] = "SMS request is initiated!";
-                $response["message"] = "You are successfully registered";
+        $response["message"] = "You are successfully registered";
 	   }
 	   else if ($res== USER_CREATE_FAILED)
 	   {
 	   		$response["error"] = true;
-            $response["message"] = "Oops! An error occurred while registering";
+            $response["message"] = "Oops! An error occurred while registering your account";
 	   }else if ($res == USER_ALREADY_EXISTED)
 	   {
 	   	$response["error"] = true;
-                $response["message"] = "Sorry, phone already exists";
+                $response["message"] = "Sorry, phone number already in use. If it is yours, log in instead";
 	   }
 
+
+     if($response["error"] ==false){
+       //send otp
+        $smsSender = new BeeCabSMSMobileAPI();
+         $smsSender->sendSms("$mobile", "$otp");
+     }
 	   //echo json response
 	   echoResponse(201, $response);
 
@@ -281,6 +286,19 @@ $app->get('/retrievetcuser/:mobile/:password',
         $response["error"] = false;
   			$response["message"] = "Welcome back!";
   			$response["profile"] = $user;
+        $status_code = $response["profile"]["status"];
+
+        if($status_code ==0)
+        {
+          $otp = rand(10000, 99999);
+          $otp_result = $db->createOtpClient($response["profile"]["id"], $otp);
+          //resend otp
+      		// $smsSender = new BeeCabSMSMobileAPI();
+      	//  $smsSender->sendSms("$mobile", "$otp");
+
+        }
+
+
       }else{
         $response["error"] = true;
   			$response["message"] = "Sorry! We could not recognised this account.";
@@ -327,6 +345,38 @@ $app->put('/changepassword/:password/:tcID', function($password, $tcID){
   }
   echoResponse(200, $response);
 });
+
+$app->post(
+    '/save_client_dummy_profile',
+    function () use($app) {
+        //check param
+      //  verifyRequiredParams(array('otp'));
+    $response = array();
+    $tc_id= $app->request->post('id');
+    $name= $app->request->post('name');
+
+  //  $filename = $app->request->file('image');
+  //  basename($_FILES["image"]["name"];
+  //  echo  " $filename " ;
+
+
+    $db = new ClientDbHandler();
+    $result = $db->saveClientDummyProfile($tc_id, $name);
+
+    if($result ==CREATED_SUCCESSFULLY){
+
+      $response["error"] = false;
+      $response["message"] = "Great! Your profile has been updated.";
+    //  $response["profile"] = $user;
+    }else{
+      $response["error"] = true;
+      $response["message"] = "Sorry! Failed at creating profile";
+    }
+
+     //echo json response
+     echoResponse(201, $response);
+    }
+);
 
 
   /* -------------********************* `Driver realted routes**************************------------------ */

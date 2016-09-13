@@ -86,7 +86,7 @@ class ClientDbHandler {
 
 
     /* ------------- `taxi_client` table method ------------------ */
-	public function createTaxiClient($name, $email, $mobile, $password, $otp='55555') //++
+	public function createTaxiClient($name, $email, $mobile, $password, $otp='55555', $gender = 'male') //++
 	{
 
 		 require_once 'PassHash.php';
@@ -103,9 +103,9 @@ class ClientDbHandler {
 			$apikey=$this->generateApiKey();
 
 			//crafting the statement
-			$stmt = $this->conn->prepare("INSERT INTO taxi_client(id,tc_name, tc_email, tc_mobile, tc_password,tc_apikey) values (?,?,?,?,?,?) ");
+			$stmt = $this->conn->prepare("INSERT INTO taxi_client(id,tc_name, tc_email, tc_mobile, tc_password,tc_apikey,tc_gender) values (?,?,?,?,?,?,?) ");
 			//Binding the params
-			$stmt->bind_param("ssssss",$id,$name, $email, $mobile,$password_hash, $apikey);
+			$stmt->bind_param("sssssss",$id,$name, $email, $mobile,$password_hash, $apikey, $gender);
 
 			$result =$stmt->execute();
 			//$new_tc_id =$stmt->insert_id;
@@ -115,6 +115,8 @@ class ClientDbHandler {
 
 			if($result){
 				$otp_result = $this->createOtpClient($id, $otp);
+        //create dummy profile
+        $this->saveClientDummyProfile($id, $name);
 				return USER_CREATED_SUCCESSFULLY;
 			}else{
 				return USER_CREATE_FAILED;
@@ -161,13 +163,13 @@ class ClientDbHandler {
   //  $password_hash = PassHash::hash($pwd);
   //  echo "$password_hash";
 
-    $stmt=$this->conn->prepare("SELECT id, tc_name, tc_email, tc_mobile,tc_password,tc_apikey
+    $stmt=$this->conn->prepare("SELECT id, tc_name, tc_email, tc_mobile,tc_password,tc_apikey,tc_status
       FROM taxi_client  WHERE tc_mobile = ? ");
     $stmt->bind_param("s",$mobile);
 
     if(  $stmt->execute()){
 
-        $stmt->bind_result($id, $name, $email, $mobile,$pwd_hash, $apikey);
+        $stmt->bind_result($id, $name, $email, $mobile,$pwd_hash, $apikey,$status);
         $stmt->store_result();
 
         if($stmt->num_rows>0)
@@ -181,6 +183,7 @@ class ClientDbHandler {
           $user["mobile"] = $mobile;
           $user["password_hash"] = $pwd_hash;
           $user["apikey"] = $apikey;
+          $user["status"] = $status;
 
   				$stmt->close();
 
@@ -249,11 +252,11 @@ class ClientDbHandler {
     public function activateUserStatus($tc_id)
     {
     	$stmt = $this->conn->prepare("UPDATE taxi_client set tc_status = 1 WHERE id = ?");
-		$stmt->bind_param("i", $tc_id);
+		$stmt->bind_param("s", $tc_id);
 		$stmt->execute();
 
 		$stmt = $this->conn->prepare("UPDATE sms_code_client set sms_status = 1 WHERE sms_tc_id = ?");
-		$stmt->bind_param("i", $tc_id);
+		$stmt->bind_param("s", $tc_id);
 		$stmt->execute();
 
     }
@@ -435,6 +438,67 @@ $stmt->bind_param("s",$email);
     }
 
   }
+
+
+/* ------------- `Save profile` table method ------------------ */
+
+
+
+  public function saveClientDummyProfile( $td_id, $name)
+  {
+  // the upload folder
+    $upload_path ="DummiesProfilePic/";
+    $upload_target =dirname(__FILE__) . '/DummiesProfilePic/';
+    $server_ip = gethostbyname(gethostname());
+
+  //createing the upload url
+    $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+
+    $imageArray = array( 'profile'=>$upload_url."client.jpg"  );
+  $response = array();
+
+
+
+  //trying to save the file in the directory
+  try {
+    //saving the file
+        $result=null;
+
+        foreach ($imageArray as $key => $file_url) {
+
+          $stmt = $this->conn->prepare("INSERT INTO `client_profile_image`( `profile_picture_url`, `taxi_client_id`, `username`,`image_tag` ) VALUES (?,?,?,?)");
+
+          $stmt->bind_param("ssss",$file_url, $td_id,$name,$key);
+
+          $result =$stmt->execute();
+        //  $new_td_id =$stmt->insert_id;
+
+          //closing the statement
+          $stmt->close();
+        }
+
+
+        //end saving the dummy profile
+
+      if($result){
+
+        return CREATED_SUCCESSFULLY;
+      //  $response['error'] = false;
+        //$response['url'] = $file_url;
+
+      }else{
+        return CREATE_FAILED;
+      }
+
+  } catch (Exception $e) {
+    $response['error'] = true;
+    $response['message']= $e->getMessage();
+  }
+  echo json_encode($response);
+
+  }
+
+
 
 
 
