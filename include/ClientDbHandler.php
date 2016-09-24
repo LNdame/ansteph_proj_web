@@ -268,48 +268,6 @@ class ClientDbHandler {
 
 
 
-	function saveprofile($username, $image,$filename,$type, $size,$clientID)
-	{
-		$con =mysql_connect("localhost","root","root");
-		mysql_select_db("taxi",$con);
-		$query = "INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values('$username','$type','$size','$image','$clientID')";
-
-		$res =mysql_query($query,$con);
-
-		if($res)
-		{
-			echo "inserted";
-		}else{
-			echo "not inserted";
-		}
-
-		mysql_close($con);
-	}
-
-
-	function createClientProfile($username, $image,$filename,$type, $size,$clientID)
-	{
-		$stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values(?,?,?,?,?)");
-		//$stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size, tc_cp_id) values(?,?,?,?)");
-		//Binding the params
-		$null = NULL;
-		//$stmt->bind_param("ssibi" ,$username,$type,$size,$null,$clientID);
-		$stmt->bind_param("ssibi" ,$username,$type,$size,$image,$clientID);
-	//	$stmt->bind_param("ssii" ,$username,$type,$size,$clientID);
-		//$stmt->send_long_data(0, file_get_contents($filename));
-		$result=$stmt->execute();
-		$new_tc_id =$stmt->insert_id;
-
-		//closing the statement
-			$stmt->close();
-		if($result){
-				echo "inserted";
-				return USER_CREATED_SUCCESSFULLY;
-			}else{
-				return USER_CREATE_FAILED;
-			}
-	}
-
 
 
    public function getAllNames() {
@@ -321,19 +279,6 @@ class ClientDbHandler {
         return $names;
     }
 
-    //create the otp +
-    public function createOtpDriver($td_id, $otp)
-    {
-      //delete the old otp u know y
-      $stmt= $this->conn->prepare("DELETE FROM sms_code_driver WHERE sms_td_id = ? ");
-      $stmt->bind_param("i", $td_id);
-      $stmt->execute();
-
-      $stmt= $this->conn->prepare("INSERT INTO sms_code_driver(sms_code, sms_td_id) values (?,?)");
-      $stmt->bind_param("ss",$otp, $td_id);
-      $result=$stmt->execute();
-      return $result;
-    }
 
 
   /* ------------- `retrieve password` table method ------------------ */
@@ -497,6 +442,143 @@ $stmt->bind_param("s",$email);
   echo json_encode($response);
 
   }
+
+
+
+  /* ------------- `Profile related method` table method ------------------ */
+
+      public function retrieveClientProfile($tc_id)
+      {
+      //  echo "$tc_id";
+        $stmt = $this->conn->prepare("SELECT * FROM `client_profile_image` WHERE taxi_client_id = ? ");
+        //binding params
+        $stmt->bind_param("s",$tc_id);
+
+        $stmt->execute();
+        $profile = $stmt->get_result();
+        $stmt->close();
+        return $profile;
+      }
+
+
+      function saveprofile($username, $image,$filename,$type, $size,$clientID)
+      {
+        $con =mysql_connect("localhost","root","root");
+        mysql_select_db("taxi",$con);
+        $query = "INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values('$username','$type','$size','$image','$clientID')";
+
+        $res =mysql_query($query,$con);
+
+        if($res)
+        {
+          echo "inserted";
+        }else{
+          echo "not inserted";
+        }
+
+        mysql_close($con);
+      }
+
+
+      function createClientProfile($username, $image,$filename,$type, $size,$clientID)
+      {
+        $stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values(?,?,?,?,?)");
+        //$stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size, tc_cp_id) values(?,?,?,?)");
+        //Binding the params
+        $null = NULL;
+        //$stmt->bind_param("ssibi" ,$username,$type,$size,$null,$clientID);
+        $stmt->bind_param("ssibi" ,$username,$type,$size,$image,$clientID);
+      //	$stmt->bind_param("ssii" ,$username,$type,$size,$clientID);
+        //$stmt->send_long_data(0, file_get_contents($filename));
+        $result=$stmt->execute();
+        $new_tc_id =$stmt->insert_id;
+
+        //closing the statement
+          $stmt->close();
+        if($result){
+            echo "inserted";
+            return USER_CREATED_SUCCESSFULLY;
+          }else{
+            return USER_CREATE_FAILED;
+          }
+        }
+
+      public function UpdateClientProfileImage( $tc_id)
+      {
+          // the upload folder
+            $upload_path ="clientprofileimages/";
+            $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+            $server_ip = gethostbyname(gethostname());
+
+          //createing the upload url
+            $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+
+            $response = array();
+            $image_tag='profile';
+            //getting file info from the request
+            $fileinfo = pathinfo($_FILES['image']['name']);
+            //echo "$fileinfo" ;
+            $extension = $fileinfo['extension'];
+
+            //file url to store in database
+            $file_url = " ";
+          //file path to upload in the server
+            $file_path= " ";
+
+
+          switch ($image_tag) {
+                case 'profile':
+                //file url to store in database
+                $file_url = $upload_url .$tc_id."_01".'.'.$extension;
+              //file path to upload in the server
+                $file_path= $upload_target.$tc_id."_01".'.'.$extension;
+                  break;
+
+                default:
+                //file url to store in database
+                $file_url = $upload_url .$tc_id."_01".'.'.$extension;
+              //file path to upload in the server
+                $file_path= $upload_target.$tc_id."_01".'.'.$extension;
+                  break;
+          }
+
+
+
+          //trying to update the file in the directory
+          try {
+            //saving the file
+            move_uploaded_file($_FILES['image']['tmp_name'], $file_path);
+            $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=? WHERE `taxi_client_id`=? ");
+
+            $stmt->bind_param("ss",$file_url, $tc_id);
+
+            $result =$stmt->execute();
+          //  $new_td_id =$stmt->insert_id;
+
+            //closing the statement
+            $stmt->close();
+            if($result){
+
+              return UPDATED;
+            //  $response['error'] = false;
+              //$response['url'] = $file_url;
+
+            }else{
+              return CREATE_FAILED;
+            }
+
+          } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message']= $e->getMessage();
+          }
+          echo json_encode($response);
+
+          }
+
+
+
+
+
 
 
 

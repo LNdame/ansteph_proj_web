@@ -212,7 +212,7 @@ $app->post(
 
 		//$smsSender->checkCredits();
 
-      
+
 
 	   	 		$response["error"] = false;
 				//$response["sms"] = "SMS request is initiated!";
@@ -377,6 +377,71 @@ $app->post(
      echoResponse(201, $response);
     }
 );
+
+
+$app->get('/retrieve_cl_profile/:id', function($tc_id){
+      $response = array();
+      $db = new ClientDbHandler();
+
+      $result =$db->retrieveClientProfile($tc_id);
+      $response["profile"]= array();
+
+      if($result){
+        $response["error"] = false;
+       $response["message"] = "Profile found";
+
+        while ($profile = $result->fetch_assoc() ) {
+
+          $tmp = array();
+          $tmp["id"] = $profile["id"];
+          $tmp["profile_picture_url"] = $profile["profile_picture_url"];
+          $tmp["image_tag"] = $profile["image_tag"];
+          $tmp["username"] = $profile["username"];
+          $tmp["taxi_client_id"] = $profile["taxi_client_id"];
+
+          array_push($response["profile"], $tmp);
+        }
+
+        echoResponse(200, $response);
+      }else{
+        $response["error"] = true;
+        $response["message"] = "No profile found";
+      }
+}
+
+);
+
+$app->post(
+    '/update_client_profile_image',
+    function () use($app)  {
+        //check param
+    verifyRequiredParams(array('id'));
+    $response = array();
+    $tc_id= $app->request->post('id');
+
+
+  //  $filename = $app->request->file('image');
+  //  basename($_FILES["image"]["name"];
+  //  echo  " $filename " ;
+
+    $db = new ClientDbHandler();
+    $result = $db->UpdateClientProfileImage($tc_id);
+
+    if($result ==UPDATED){
+
+      $response["error"] = false;
+      $response["message"] = "Great! Your profile has been updated...";
+    //  $response["profile"] = $user;
+    }else{
+      $response["error"] = true;
+      $response["message"] = "Sorry! Failed at creating account";
+    }
+
+     //echo json response
+     echoResponse(201, $response);
+    }
+);
+
 
 
   /* -------------********************* `Driver realted routes**************************------------------ */

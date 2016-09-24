@@ -15,7 +15,7 @@ class DriverDbHandler {
         //by calling the method connect of DbConnect class
         $this->conn = $db->connect();
 
-          
+
     }
 
 
@@ -546,12 +546,12 @@ public function retrieveDriverProfile($tc_id)
 }
 
 
-public function retrieveDriverImages($tc_id)
+public function retrieveDriverImages($td_id)
 {
 //  echo "$tc_id";
   $stmt = $this->conn->prepare("SELECT * FROM `driver_profile_image` WHERE taxi_driver_id = ? ");
   //binding params
-  $stmt->bind_param("s",$tc_id);
+  $stmt->bind_param("s",$td_id);
 
   $stmt->execute();
   $images = $stmt->get_result();
