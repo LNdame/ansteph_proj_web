@@ -442,6 +442,33 @@ $app->post(
     }
 );
 
+$app->post(
+    '/save_client_profile_en_image',
+    function () use($app)  {
+        //check param
+    verifyRequiredParams(array('id','image','username'));
+    $response = array();
+    $tc_id= $app->request->post('id');
+    $encoded= $app->request->post('image');
+    $username= $app->request->post('username');
+
+    $db = new ClientDbHandler();
+    $result = $db->saveprofileFromEn($tc_id, $encoded,$username);
+
+    if($result ==UPDATED){
+
+      $response["error"] = false;
+      $response["message"] = "Great! Your profile pic has been added...Awesome";
+    //  $response["profile"] = $user;
+    }else{
+      $response["error"] = true;
+      $response["message"] = "Sorry! Failed at creating account";
+    }
+
+     //echo json response
+     echoResponse(201, $response);
+    }
+);
 
 
   /* -------------********************* `Driver realted routes**************************------------------ */
@@ -617,6 +644,8 @@ $app->post(
        echoResponse(201, $response);
       }
   );
+
+
 
 
 

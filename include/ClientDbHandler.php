@@ -396,7 +396,7 @@ $stmt->bind_param("s",$email);
     $upload_target =dirname(__FILE__) . '/DummiesProfilePic/';
     $server_ip = gethostbyname(gethostname());
 
-  //createing the upload url
+  //creating the upload url
     $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
 
     $imageArray = array( 'profile'=>$upload_url."client.jpg"  );
@@ -442,6 +442,166 @@ $stmt->bind_param("s",$email);
   echo json_encode($response);
 
   }
+
+
+  public function saveprofileFromEn21($tc_id,$image,$username)
+  {
+    // the upload folder
+      $upload_path ="clientprofileimages/";
+      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+      $server_ip = gethostbyname(gethostname());
+
+      //creating the upload url
+      $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+
+      //file url to store in database
+      $file_url = $upload_url .$tc_id."_01.jpg";
+      $file_path= $upload_target.$tc_id."_01.jpg";
+      $image_tag="profile";
+
+      try {
+
+        $stmt = $this->conn->prepare("INSERT INTO `client_profile_image`( `profile_picture_url`, `image_tag`, `username`, `taxi_client_id`) VALUES (?,?,?,?)");
+
+    //    $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
+        $stmt->bind_param("ssss", $file_url,$image_tag,$username,$tc_id);
+
+        $result =$stmt->execute();
+
+        $stmt->close();
+        if($result){
+
+            file_put_contents($file_path, base64_decode($image));
+            echo "Successfully uploaded";
+            return UPDATED;
+
+        }else{
+          return CREATE_FAILED;
+        }
+
+      } catch (Exception $e) {
+
+        $response['error'] = true;
+        $response['message']= $e->getMessage();
+      }
+      echo json_encode($response);
+
+
+  }
+
+  public function saveprofileFromEn($tc_id,$image,$username)
+  {
+    // the upload folder
+      $upload_path ="clientprofileimages/";
+      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+      $server_ip = gethostbyname(gethostname());
+
+      //creating the upload url
+      $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+
+      //file url to store in database
+      $file_url = $upload_url .$tc_id."_01.jpg";
+      $file_path= $upload_target.$tc_id."_01.jpg";
+      $image_tag="profile";
+
+      try {
+
+        $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=?,`image_tag`=?,`username`=? WHERE`taxi_client_id`= ?");
+
+    //    $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
+        $stmt->bind_param("ssss", $file_url,$image_tag,$username,$tc_id);
+
+        $result =$stmt->execute();
+
+        $stmt->close();
+        if($result){
+
+            file_put_contents($file_path, base64_decode($image));
+            echo "Successfully uploaded";
+            return UPDATED;
+
+        }else{
+          return CREATE_FAILED;
+        }
+
+      } catch (Exception $e) {
+
+        $response['error'] = true;
+        $response['message']= $e->getMessage();
+      }
+      echo json_encode($response);
+
+
+  }
+
+
+
+
+  public function saveprofileFromEncode($tc_id,$base64_string_img)
+  {
+    // the upload folder
+      $upload_path ="clientprofileimages/";
+      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+      $server_ip = gethostbyname(gethostname());
+
+      //creating the upload url
+        $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+
+
+        $filename_path = md5(time().uniqid()).".png";
+        $decoded=base64_decode($base64_string_img);
+      // file_put_contents("uploads/".$filename_path,$decoded);
+
+
+        //file url to store in database
+        $file_url = $upload_url .$tc_id."_01.jpg";
+      //file path to upload in the server
+        $file_path= $upload_target."sample_01.jpg";
+
+        $path = "image/$id.png";
+        $actualpath =dirname(__FILE__) .$path    ; //could be an issue
+
+        $sql= "INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon','$actualpath')"		;
+
+        //trying to update the file in the directory
+        try {
+          //saving the file
+        //  move_uploaded_file($_FILES['image']['tmp_name'], $file_path);
+        //  file_put_contents($file_path,$decoded);
+          $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
+
+          //$stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=? WHERE `taxi_client_id`=? ");
+
+          $stmt->bind_param("s",$file_path);
+
+          $result =$stmt->execute();
+        //  $new_td_id =$stmt->insert_id;
+
+          //closing the statement
+          $stmt->close();
+          if($result){
+
+              file_put_contents($file_path, base64_decode($base64_string_img));
+              echo "Successfully uploaded";
+              return UPDATED;
+          //  $response['error'] = false;
+            //$response['url'] = $file_url;
+
+          }else{
+            return CREATE_FAILED;
+          }
+
+        } catch (Exception $e) {
+
+          $response['error'] = true;
+          $response['message']= $e->getMessage();
+        }
+        echo json_encode($response);
+
+  }
+
+
+
 
 
 
@@ -573,7 +733,7 @@ $stmt->bind_param("s",$email);
           }
           echo json_encode($response);
 
-          }
+      }
 
 
 
