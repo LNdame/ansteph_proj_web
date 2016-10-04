@@ -1176,6 +1176,74 @@ $td_id = $app->request->post('tdID');
 
       );
 
+      /* ------------- `referral program related route`  ------------------ */
+      $app->post(
+          '/create_client_referral',
+          function () use($app) {
+              //check param
+          verifyRequiredParams(array('contact','id'));
+          $response = array();
+          $tc_id= $app->request->post('id');
+          $contact= $app->request->post('contact');
+
+        //  $filename = $app->request->file('image');
+        //  basename($_FILES["image"]["name"];
+        //  echo  " $filename " ;
+
+
+          $db = new ClientDbHandler();
+          $result = $db->createreferral($contact, $tc_id);
+
+          if($result ==CREATED_SUCCESSFULLY){
+
+            $response["error"] = false;
+            $response["message"] = "Great! Your referal has been sent.";
+          //  $response["profile"] = $user;
+          }else{
+            $response["error"] = true;
+            $response["message"] = "Sorry! Failed at creating referral";
+          }
+
+           //echo json response
+           echoResponse(201, $response);
+          }
+      );
+
+
+      $app->get('/retrieve_client_referral/:id', function($tc_id){
+            $response = array();
+            $db = new ClientDbHandler();
+
+            $result =$db->retrieveClientreferral($tc_id);
+            if($result){
+
+              $response["ref"] = array();
+              $response["error"] = false;
+              $response["message"] = "referral(s) found";
+
+            //  $response["images"] = array();car_model  `id`, `ref_provided_contact`, `ref_status`, `ref_date_sent`, `taxi_client_id
+          //  $response[] = array();
+              while ($images = $result->fetch_assoc() ) {
+                $tmp = array();
+                $tmp["id"] = $images["id"];
+                $tmp["ref_provided_contact"] = $images["ref_provided_contact"];
+                $tmp["ref_status"] = $images["ref_status"];
+                $tmp["ref_date_sent"] = $images["ref_date_sent"];
+                $tmp["taxi_client_id"] = $images["taxi_client_id"];
+
+
+                array_push($response["ref"], $tmp);
+              }
+
+              echoResponse(200, $response);
+            }else{
+              $response["error"] = true;
+              $response["message"] = "No referral found";
+            }
+      }
+
+      );
+
 
 
 /**

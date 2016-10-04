@@ -736,13 +736,50 @@ $stmt->bind_param("s",$email);
       }
 
 
+      /* ------------- `referral program related method` table method ------------------ */
 
 
+      function createreferral($contact, $tc_id)
+      {
+        $stmt =$this->conn->prepare("INSERT INTO `client_referral`( `ref_provided_contact`,  `taxi_client_id`) VALUES (?,?)");
+
+        $stmt->bind_param("ss" ,$contact, $tc_id);
+
+        $result=$stmt->execute();
+        $new_tc_id =$stmt->insert_id;
+
+        //closing the statement
+          $stmt->close();
+        if($result){
+
+            return USER_CREATED_SUCCESSFULLY;
+          }else{
+            return USER_CREATE_FAILED;
+          }
+        }
 
 
+        public function updatereferral($ref_contact)
+        {
+          $stmt = $this->conn->prepare("UPDATE client_referral set ref_status = 1 WHERE ref_provided_contact = ?");
+        $stmt->bind_param("s", $ref_contact);
+        $stmt->execute();
+
+        }
 
 
+        public function retrieveClientreferral($tc_id)
+        {
+        //  echo "$tc_id";
+          $stmt = $this->conn->prepare("SELECT * FROM `client_referral` WHERE taxi_client_id = ? ");
+          //binding params
+          $stmt->bind_param("s",$tc_id);
 
+          $stmt->execute();
+          $referral = $stmt->get_result();
+          $stmt->close();
+          return $referral;
+        }
 
 
 
