@@ -142,7 +142,7 @@ class JobDbHandler {
 
   public function retrieveAssignedJob($tc_id)
   {
-    $stmt = $this->conn->prepare("SELECT * FROM `journey_request`  WHERE `jr_tc_id` = ? AND `jr_status` = 1");
+    $stmt = $this->conn->prepare("SELECT * FROM `journey_request`  WHERE `jr_tc_id` = ? AND (`jr_status` = 1 OR `jr_status` = 2)");
     //binding params
     $stmt->bind_param("s",$tc_id);
 
@@ -166,6 +166,12 @@ class JobDbHandler {
 
 
   }
+
+
+
+
+
+
 
 public function getEmail()
 {
@@ -209,7 +215,7 @@ $stmt->bind_param("s",$email);
 
 
 
-  public function createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed=1, $jr_id, $tc_id)
+  public function createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed=1, $jr_id, $td_id)
   {
     $hasFareAccepted =0;
    if ($proposedFare == $counterOffer) {
@@ -223,7 +229,7 @@ $stmt->bind_param("s",$email);
         `jre_call_allowed`, `jre_jr_id`, `jre_td_id`) VALUES (?,?,?,?,?,?) ");
 
       //Binding the params
-      $stmt->bind_param("iiiiis",$hasFareAccepted,$proposedFare,$counterOffer, $callAllowed, $jr_id,$tc_id);
+      $stmt->bind_param("iiiiis",$hasFareAccepted,$proposedFare,$counterOffer, $callAllowed, $jr_id,$td_id);
 
       $result =$stmt->execute();
       $new_td_id =$stmt->insert_id;
@@ -240,6 +246,23 @@ $stmt->bind_param("s",$email);
 
 
   }
+
+
+  public function updateJourneyRequestResponse($id, $code)
+    {
+    $stmt = $this->conn->prepare("UPDATE `journey_request_response` set `jre_status` = ? WHERE `jre_jr_id` = ?");
+    $stmt->bind_param("ii",$code, $id);
+    $res=  $stmt->execute();
+    $stmt->close();
+        if($res){
+          return UPDATED;
+        }else{
+          return CREATE_FAILED;
+        }
+
+
+    }
+
 
 
   public function getJourneyRequestReponse($jr_id)
@@ -287,8 +310,10 @@ public function createAcceptedRequest($pickupAddr, $destAddr, $pickupCoord, $des
     $stmt->close();
 
     if($result){
+      $this->updateJourneyRequestResponse($jr_id, 1);
 
       return CREATED_SUCCESSFULLY;
+
     }else{
       return CREATE_FAILED;
     }
@@ -298,10 +323,11 @@ public function createAcceptedRequest($pickupAddr, $destAddr, $pickupCoord, $des
 
   public function updateAcceptedRequest($id,$code)
   {
-    $stmt = $this->conn->prepare("UPDATE accepted_request set ar_status = ? WHERE id = ?");
+    $stmt = $this->conn->prepare("UPDATE accepted_request set ar_status = ? WHERE ar_jr_id = ?");
   $stmt->bind_param("ii",$code, $id);
   $res= $stmt->execute();
     if($res){
+      //update also the journey_request
       return UPDATED;
     }else{
       return CREATE_FAILED;
@@ -310,27 +336,36 @@ public function createAcceptedRequest($pickupAddr, $destAddr, $pickupCoord, $des
 
 
 
+  public function retrievePendingResponseJob($td_id)
+  {
+    $stmt = $this->conn->prepare("SELECT jre.`id`, `jr_pickup_add`, `jr_destination_add`, `jr_pickup_time`, `jr_proposed_fare`, `jr_call_allowed`, `jr_pickup_coord`, `jr_destination_coord`, `jr_tc_id`, `jr_shared`,`jr_status`, `jre_status`,`jre_td_id`, `jr_city`, `jr_time_created`
+      FROM `journey_request` jr JOIN `journey_request_response` jre ON jre.`jre_jr_id` = jr.`id` WHERE jre.`jre_td_id`  = ? AND jre.`jre_status` = 0 AND jr.`jr_status` =0");
+    //binding params
+    $stmt->bind_param("s",$td_id);
+
+    $stmt->execute();
+    $jobs = $stmt->get_result();
+    $stmt->close();
+    return $jobs;
+  }
+
+
+
+
+
+  public function retrieveAcceptedResponseJob($td_id)
+  {
+    $stmt = $this->conn->prepare("SELECT ar.*, jr_pickup_time , jr_proposed_fare FROM `accepted_request` ar join `journey_request`jr ON ar.`ar_jr_id` = jr.`id` WHERE `ar_td_id` = ? AND (`ar_status` = 1 OR `ar_status` = 2)");
+    //binding params
+    $stmt->bind_param("s",$td_id);
+
+    $stmt->execute();
+    $jobs = $stmt->get_result();
+    $stmt->close();
+    return $jobs;
+  }
+
 
 }
-
-
-
-
-
-/*$test = new DbHandler();
-$fr =$test->fbRegister("122aga45678dfddsgh", "bely@gmail.com");
-echo json_encode($fr ) ;
-echo "done here";*/
-
-
-
-//$fr = $test->retrievePendingJob("tcmaster");
-//$fr=$test->createJourneyRequest('1 Sandler street','1 Sandler street','9:00','45','0','-33.9753733,25.604615,21','-33.9753733,25.604615,21','tcmaster', '0');
-//$user = $test->retrieveUser("01123581321","wewillrocku");
-//$test->createTaxiDriver('Tan','xanya@gt.io','Company','Opel','xxx 999 EC','CDfgr89','2005','+27787665613', '22222');$mobile, $pwd
-//$name, $email,$company_name, $carmodel, $numplate='xxx 999 EC', $license, $year, $mobile, $otp='55555'
-//$user =$test->activateUser(11111);
-//$test->activateUserStatus(17);
-////echo "done here";
 
 ?>

@@ -221,11 +221,11 @@ $app->post(
 	   else if ($res== USER_CREATE_FAILED)
 	   {
 	   		$response["error"] = true;
-            $response["message"] = "Oops! An error occurred while registering your account";
+        $response["message"] = "Oops! An error occurred while registering your account";
 	   }else if ($res == USER_ALREADY_EXISTED)
 	   {
-	   	$response["error"] = true;
-                $response["message"] = "Sorry, phone number already in use. If it is yours, log in instead";
+	   	  $response["error"] = true;
+        $response["message"] = "Sorry, phone number already in use. If it is yours, log in instead";
 	   }
 
 
@@ -471,12 +471,12 @@ $app->post(
 );
 
 
-  /* -------------********************* `Driver realted routes**************************------------------ */
+  /* -------------********************* `Driver related routes**************************------------------ */
   $app->post(
       '/register_driver',
       function () use ($app){
          //check the params  name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$apikey
-         verifyRequiredParams(array('name','email','mobile','password', 'company_name',  'carmodel', 'numplate', 'license', 'year'));
+         verifyRequiredParams(array('name','email','mobile','password', 'company_name',  'carmodel', 'numplate', 'licence', 'year'));
 
   	   $response = array();
   	   //read the param
@@ -486,7 +486,7 @@ $app->post(
        $company_name = $app->request->post('company_name');
        $carmodel= $app->request->post('carmodel');
        $numplate = $app->request->post('numplate');
-       $license = $app->request->post('license');
+       $licence = $app->request->post('licence');
        $year = $app->request->post('year');
   	   $password = $app->request->post('password');
 
@@ -496,29 +496,31 @@ $app->post(
   	   validateEmail($email);
   	   $db = new DriverDbHandler();
 
-  	   $res =$db->createTaxiDriver($name, $email,$company_name, $carmodel, $numplate, $license, $year,$password, $mobile,$otp);
+  	   $res =$db->createTaxiDriver($name, $email,$company_name, $carmodel, $numplate, $licence, $year,$password, $mobile,$otp);
 
   	   if($res == USER_CREATED_SUCCESSFULLY){
 
-  		//send otp
-  		// $smsSender = new MyMobileAPI();
-  		//$smsSender->sendSms($mobile, $otp);
-  		//$smsSender->checkCredits();
-
-
-  	   	 		$response["error"] = false;
+  	   	 	$response["error"] = false;
   				//$response["sms"] = "SMS request is initiated!";
-                  $response["message"] = "You are successfully registered";
+          $response["message"] = "You are successfully registered";
+
   	   }
   	   else if ($res== USER_CREATE_FAILED)
   	   {
   	   		$response["error"] = true;
               $response["message"] = "Oops! An error occurred while registering";
+
   	   }else if ($res == USER_ALREADY_EXISTED)
   	   {
   	   	$response["error"] = true;
                   $response["message"] = "Sorry, phone already exists";
   	   }
+
+       if($response["error"] ==false){
+         //send otp
+          $smsSender = new BeeCabSMSMobileAPI();
+           $smsSender->sendSms("$mobile", "$otp");
+       }
 
   	   //echo json response
   	   echoResponse(201, $response);
@@ -911,6 +913,11 @@ $app->post(
       $result =$db->updateJourneyRequest($id,$code);
       if($result==UPDATED)
       {
+
+        if($code == 3 || $code == 4){
+          $res= $db-> updateAcceptedRequest($id,$code);
+        }
+
         $response["error"] = false;
         $response["message"] = "Request updated";
       }else{
@@ -924,7 +931,7 @@ $app->post(
     $app->post('/createjobresponse', function () use ($app){
       //check the params  name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$apikey
       verifyRequiredParams(array('proposedFare',  'counterOffer', 'callAllowed',
-      'jrID',  'tcID'));
+      'jrID',  'tdID'));
     //  verifyRequiredParams(array('pickupAddr','destAddr','pickupTime','proposedFare',
     //  'pickupCoord', 'destCoord', 'tcID'));
 
@@ -934,13 +941,13 @@ $app->post(
       $counterOffer = $app->request->post('counterOffer');
       $callAllowed = $app->request->post('callAllowed');
       $jr_id = $app->request->post('jrID');
-      $tc_id = $app->request->post('tcID');
+      $td_id = $app->request->post('tdID');
 
 
         $response = array();
         $db = new JobDbHandler();
       //$result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, $proposedFare, 1,$pickupCoord, $destCoord,$tc_id,1);
-      $result = $db->createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed, $jr_id, $tc_id);
+      $result = $db->createJourneyRequestReponse($proposedFare, $counterOffer, $callAllowed, $jr_id, $td_id);
     //  $result = $db->createJourneyRequest($pickupAddr, $destAddr, $pickupTime, 40 , 1,$pickupCoord, $destCoord,$tc_id,1);
       if($result== CREATED_SUCCESSFULLY){
 
@@ -1045,6 +1052,13 @@ $td_id = $app->request->post('tdID');
       $result =$db->updateAcceptedRequest($id,$code);
       if($result==UPDATED)
       {
+
+        if ($code=='2' ||$code==2 ) {
+          $res = $db->updateJourneyRequest($id,2);
+
+        }
+
+
         $response["error"] = false;
         $response["message"] = "Request updated";
       }else{
@@ -1054,6 +1068,87 @@ $td_id = $app->request->post('tdID');
       echoResponse(200, $response);
     });
 
+
+
+    $app->get('/retrieve_pending_jour_response/:tdID', function($td_id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->retrievePendingResponseJob($td_id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+  //`id`, `jre_initial_fare_accepted`, `jre_proposed_fare`, `jre_counter_offer`,
+  //`jre_call_allowed`, `jre_status`, `jre_jr_id`, `jre_td_id`, `jre_created_at
+
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["jr_pickup_add"] = $job["jr_pickup_add"];
+              $tmp["jr_destination_add"] = $job["jr_destination_add"];
+              $tmp["jr_pickup_coord"] = $job["jr_pickup_coord"];
+              $tmp["jr_destination_coord"] = $job["jr_destination_coord"];
+              $tmp["jr_pickup_time"] = $job["jr_pickup_time"];
+              $tmp["jr_proposed_fare"] = $job["jr_proposed_fare"];
+              $tmp["jr_tc_id"] = $job["jr_tc_id"];
+              $tmp["jre_td_id"] = $job["jre_td_id"];
+              $tmp["jr_shared"] = $job["jr_shared"];
+              $tmp["jre_status"] = $job["jre_status"];
+
+              $tmp["jr_city"] = $job["jr_city"];
+              $tmp["jr_time_created"] = $job["jr_time_created"];
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
+
+
+    $app->get('/retrieve_accepted_jour_response/:tdID', function($td_id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->retrieveAcceptedResponseJob($td_id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+  //SELECT `id`, `ar_pickup_add`, `ar_destination_add`, `ar_pickup_coord`, `ar_destination_coord`,
+  //`ar_distance_km`, `ar_final_fare`,
+  //`ar_city`, `ar_created_at`, `ar_status`, `ar_jr_id`, `ar_tc_id`, `ar_td_id`
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["ar_pickup_add"] = $job["ar_pickup_add"];
+              $tmp["ar_destination_add"] = $job["ar_destination_add"];
+              $tmp["ar_pickup_coord"] = $job["ar_pickup_coord"];
+              $tmp["ar_destination_coord"] = $job["ar_destination_coord"];
+              $tmp["jr_pickup_time"] = $job["jr_pickup_time"];
+
+              $tmp["ar_final_fare"] = $job["ar_final_fare"];
+              $tmp["jr_proposed_fare"] = $job["jr_proposed_fare"];
+              $tmp["ar_tc_id"] = $job["ar_tc_id"];
+              $tmp["ar_td_id"] = $job["ar_td_id"];
+              $tmp["ar_jr_id"] = $job["ar_jr_id"];
+              $tmp["ar_status"] = $job["ar_status"];
+
+              $tmp["ar_city"] = $job["ar_city"];
+              $tmp["ar_created_at"] = $job["ar_created_at"];
+
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
 
 
     /* -------------********************* Push notification realted routes *********************------------------ */
@@ -1104,6 +1199,14 @@ $td_id = $app->request->post('tdID');
 
 
       });
+
+
+
+
+
+
+
+
 
 
       /* -------------********************* `Test platform realted routes *********************------------------ */
@@ -1244,6 +1347,72 @@ $td_id = $app->request->post('tdID');
 
       );
 
+      $app->post(
+          '/create_driver_referral',
+          function () use($app) {
+              //check param
+          verifyRequiredParams(array('contact','id'));
+          $response = array();
+          $td_id= $app->request->post('id');
+          $contact= $app->request->post('contact');
+
+        //  $filename = $app->request->file('image');
+        //  basename($_FILES["image"]["name"];
+        //  echo  " $filename " ;
+
+
+          $db = new DriverDbHandler();
+          $result = $db->createreferral($contact, $td_id);
+
+          if($result ==CREATED_SUCCESSFULLY){
+
+            $response["error"] = false;
+            $response["message"] = "Great! Your referal has been sent.";
+          //  $response["profile"] = $user;
+          }else{
+            $response["error"] = true;
+            $response["message"] = "Sorry! Failed at creating referral";
+          }
+
+           //echo json response
+           echoResponse(201, $response);
+          }
+      );
+
+
+      $app->get('/retrieve_driver_referral/:id', function($td_id){
+            $response = array();
+            $db = new DriverDbHandler();
+
+            $result =$db->retrieveClientreferral($td_id);
+            if($result){
+
+              $response["ref"] = array();
+              $response["error"] = false;
+              $response["message"] = "referral(s) found";
+
+            //  $response["images"] = array();car_model  `id`, `ref_provided_contact`, `ref_status`, `ref_date_sent`, `taxi_client_id
+          //  $response[] = array();
+              while ($images = $result->fetch_assoc() ) {
+                $tmp = array();
+                $tmp["id"] = $images["id"];
+                $tmp["ref_provided_contact"] = $images["ref_provided_contact"];
+                $tmp["ref_status"] = $images["ref_status"];
+                $tmp["ref_date_sent"] = $images["ref_date_sent"];
+                $tmp["taxi_driver_id"] = $images["taxi_driver_id"];
+
+
+                array_push($response["ref"], $tmp);
+              }
+
+              echoResponse(200, $response);
+            }else{
+              $response["error"] = true;
+              $response["message"] = "No referral found";
+            }
+      }
+
+      );
 
 
 /**

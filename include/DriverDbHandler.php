@@ -88,7 +88,7 @@ class DriverDbHandler {
 
 
 	  /* ------------- `taxi_driver` table method ------------------ */
-	public function createTaxiDriver($name, $email,$company_name, $carmodel, $numplate='xxx 999 EC', $license, $year,$password, $mobile, $otp='55555') //++
+	public function createTaxiDriver($name, $email,$company_name, $carmodel, $numplate='xxx 999 EC', $licence, $year,$password, $mobile, $otp='55555') //++
 	{
      require_once 'PassHash.php';
 		if(!$this->isTaxiDriverExists($mobile))
@@ -100,11 +100,11 @@ class DriverDbHandler {
 			//Generating an API Key
 			$apikey=$this->generateApiKey();
 
-			//crafting the statement
-			$stmt = $this->conn->prepare("INSERT INTO taxi_driver(id,td_name, td_company_name, td_email, td_mobile, td_carmodel, td_numplate, td_license, td_year,td_password,td_apikey) values (?,?,?,?,?,?,?,?,?,?,?) ");
+			//crafting the statement id`, `td_name`, `td_company_name`, `td_email`, `td_mobile`, `td_license`, `td_year`, `td_password`, `td_apikey`, `td_status`, `td_created_at`, `company_id`
+			$stmt = $this->conn->prepare("INSERT INTO `taxi_driver`(`id`, `td_name`, `td_company_name`, `td_email`, `td_mobile`, `td_license`, `td_year`, `td_password`, `td_apikey`)  VALUES (?,?,?,?,?,?,?,?,?) ");
 
       //Binding the params
-			$stmt->bind_param("sssssssssss",$id ,$name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$password_hash,$apikey);
+			$stmt->bind_param("sssssssss", $id ,$name, $company_name, $email,  $mobile, $licence, $year,$password_hash,$apikey);
 
 			$result =$stmt->execute();
 			//$new_td_id =$stmt->insert_id;
@@ -148,12 +148,12 @@ class DriverDbHandler {
 //  `td_year`, `td_password`, `td_apikey`, `td_status`, `td_created_at`, `td_propic`, `company_id`)
 
     $stmt=$this->conn->prepare("SELECT id, td_name, td_company_name, td_email, td_mobile, td_license,
-      td_year, td_password,td_apikey, company_id FROM taxi_driver  WHERE td_mobile = ? ");
+      td_year, td_password,td_apikey, company_id, td_status FROM taxi_driver  WHERE td_mobile = ? ");
     $stmt->bind_param("s",$mobile);
 
     if(  $stmt->execute()){
 
-        $stmt->bind_result($id, $name,$company_name, $email,  $mobile, $licence, $year, $pwd_hash, $apikey,$company_id);
+        $stmt->bind_result($id, $name,$company_name, $email,  $mobile, $licence, $year, $pwd_hash, $apikey,$company_id,$status);
         $stmt->store_result();
 
         if($stmt->num_rows>0)
@@ -171,7 +171,7 @@ class DriverDbHandler {
           $user["password_hash"] = $pwd_hash;
           $user["apikey"] = $apikey;
           $user["company_id"] = $company_id;
-
+          $user["status"] = $status;
           $stmt->close();
 
           $isPwdCheck = PassHash::check_password($pwd_hash,$pwd);
@@ -559,6 +559,52 @@ public function retrieveDriverImages($td_id)
   return $images;
 }
 
+/* ------------- `referral program related method` table method ------------------ */
+
+
+function createreferral($contact, $td_id)
+{
+  $stmt =$this->conn->prepare("INSERT INTO `driver_referral`( `ref_provided_contact`,  `taxi_driver_id`) VALUES (?,?)");
+
+  $stmt->bind_param("ss" ,$contact, $td_id);
+
+  $result=$stmt->execute();
+  $new_tc_id =$stmt->insert_id;
+
+  //closing the statement
+    $stmt->close();
+  if($result){
+
+      return USER_CREATED_SUCCESSFULLY;
+    }else{
+      return USER_CREATE_FAILED;
+    }
+  }
+
+
+  public function updatereferral($ref_contact)
+  {
+    $stmt = $this->conn->prepare("UPDATE driver_referral set ref_status = 1 WHERE ref_provided_contact = ?");
+  $stmt->bind_param("s", $ref_contact);
+  $stmt->execute();
+
+  }
+
+
+  public function retrieveClientreferral($td_id)
+  {
+  //  echo "$tc_id";
+    $stmt = $this->conn->prepare("SELECT * FROM `driver_referral` WHERE `taxi_driver_id` = ? ");
+    //binding params
+    $stmt->bind_param("s",$td_id);
+
+    $stmt->execute();
+    $referral = $stmt->get_result();
+    $stmt->close();
+    return $referral;
+  }
+
+
 
 
 
@@ -566,11 +612,6 @@ public function retrieveDriverImages($td_id)
 
 }
 
-
-/*$test = new DriverDbHandler();
-$fr =$test->saveDriverProfile($_POST['name']);
-echo json_encode($fr ) ;
-echo "done here";//*/
 
 
 
