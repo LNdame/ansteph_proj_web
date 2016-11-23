@@ -231,8 +231,9 @@ $app->post(
 
      if($response["error"] ==false){
        //send otp
+         $msg = "BeeCab - your one time password is: ".$otp;
         $smsSender = new BeeCabSMSMobileAPI();
-         $smsSender->sendSms("$mobile", "$otp");
+         $smsSender->sendSms("$mobile", "$msg");
      }
 	   //echo json response
 	   echoResponse(201, $response);
@@ -471,6 +472,49 @@ $app->post(
 );
 
 
+$app->get('/resendotp/:mobile', function($mobile){
+      $response = array();
+      $db = new ClientDbHandler();
+
+      $result =$db->retrieveOTP($mobile);
+      $mobile ="";
+      $tc_id ="";
+      if($result){
+        $response["error"] = false;
+        $response["otp"] = array();
+
+        while ($otp = $result->fetch_assoc() ) {
+          $tmp = array();
+          $tmp["id"] = $otp["id"];
+          $tmp["sms_code"] = $otp["sms_code"];
+          $tmp["tc_mobile"] = $otp["tc_mobile"];
+          $mobile =$otp["tc_mobile"];
+          $tc_id =$otp["id"];
+
+          array_push($response["otp"], $tmp);
+        }
+
+        if($response["error"] ==false){
+
+          $otp = rand(10000, 99999);
+
+          $otp_result = $db->createOtpClient($tc_id, $otp);
+
+          //send otp
+          $msg = "BeeCab - your one time password is: ".$otp;
+          $smsSender = new BeeCabSMSMobileAPI();
+          $smsSender->sendSms("$mobile", "$msg");
+        }
+
+        echoResponse(200, $response);
+      }
+}
+
+);
+
+
+
+
   /* -------------********************* `Driver related routes**************************------------------ */
   $app->post(
       '/register_driver',
@@ -518,8 +562,9 @@ $app->post(
 
        if($response["error"] ==false){
          //send otp
+          $msg = "BeeCab 4 Drivers - your one time password is: ".$otp;
           $smsSender = new BeeCabSMSMobileAPI();
-           $smsSender->sendSms("$mobile", "$otp");
+           $smsSender->sendSms("$mobile", "$msg");
        }
 
   	   //echo json response
@@ -582,57 +627,22 @@ $app->post(
       }
   );
 
-
+//being use
   $app->post(
       '/save_driver_profile_image',
       function () use($app) {
           //check param
         //  verifyRequiredParams(array('id'));
       $response = array();
-      $tc_id= $app->request->post('id');
-
-    //  $filename = $app->request->file('image');
-    //  basename($_FILES["image"]["name"];
-    //  echo  " $filename " ;
-
-
-      $db = new DriverDbHandler();
-      $result = $db->saveDriverProfileImage($tc_id);
-
-      if($result ==CREATED_SUCCESSFULLY){
-
-        $response["error"] = false;
-        $response["message"] = "Great! Your profile has been updated...Mr Transporter";
-      //  $response["profile"] = $user;
-      }else{
-        $response["error"] = true;
-        $response["message"] = "Sorry! Failed at creating account";
-      }
-
-       //echo json response
-       echoResponse(201, $response);
-      }
-  );
-
-
-  $app->post(
-      '/update_driver_profile_image',
-      function () use($app)  {
-          //check param
-      verifyRequiredParams(array('id','image_tag'));
-      $response = array();
-     $tc_id= $app->request->post('id');
+      $td_id= $app->request->post('id');
+      $image= $app->request->post('image');
       $image_tag= $app->request->post('image_tag');
 
-    //  $filename = $app->request->file('image');
-    //  basename($_FILES["image"]["name"];
-    //  echo  " $filename " ;
-
 
       $db = new DriverDbHandler();
-      $result = $db->UpdateDriverProfileImage($tc_id,$image_tag);
+      $result = $db->updatedriverprofileFromEn($td_id,$image,$image_tag);
 
-      if($result ==CREATED_SUCCESSFULLY){
+      if($result ==UPDATED){
 
         $response["error"] = false;
         $response["message"] = "Great! Your profile has been updated...Mr Transporter";
@@ -754,6 +764,56 @@ $app->post(
       echoResponse(200, $response);
     }
   );
+
+
+
+  $app->get('/retrieve_dr_profile_for_client/:id',
+      function($tc_id){  //function ($mobile, $pwd) use($app){
+        $response = array();
+        $db = new DriverDbHandler();
+
+        $result =$db->retrieveDriverProfileForClient($tc_id);
+
+        if($result){
+        //  $response["error"] = false;
+          // $response["message"] = "Image(s) found";
+          $response["error"] = false;
+          $response["profile"]= array();
+        //  $response["images"] = array();car_model
+      //  $response[] = array();
+          while ($profile = $result->fetch_assoc() ) {
+            $tmp = array();
+            $tmp["id"] = $profile["id"];
+            $tmp["car_numberplate"] = $profile["car_numberplate"];
+
+            $tmp["car_model"] = $profile["car_model"];
+            $tmp["taxi_driver_id"] = $profile["taxi_driver_id"];
+            $tmp["profile_rating"] = $profile["profile_rating"];
+            $tmp["current_city"] = $profile["current_city"];
+
+            $tmp["td_name"] = $profile["td_name"];
+            $tmp["td_mobile"] = $profile["td_mobile"];
+            $tmp["td_email"] = $profile["td_email"];
+
+            $tmp["td_license"] = $profile["td_license"];
+            $tmp["td_year"] = $profile["td_year"];
+            array_push($response["profile"], $tmp);
+          }
+
+          $response["message"] = "Profile found";
+
+        }else{
+          $response["error"] = true;
+          $response["message"] = "No Profile found";
+        }
+
+      //echo 'This is a get route';
+      //echo json response
+      echoResponse(200, $response);
+    }
+  );
+
+
 
 
     /* -------------********************* `Journey related routes *********************------------------ */
@@ -1299,12 +1359,21 @@ $td_id = $app->request->post('tdID');
 
           if($result ==CREATED_SUCCESSFULLY){
 
+
+
             $response["error"] = false;
             $response["message"] = "Great! Your referal has been sent.";
           //  $response["profile"] = $user;
           }else{
             $response["error"] = true;
             $response["message"] = "Sorry! Failed at creating referral";
+          }
+            //send sms from here
+          if($response["error"] ==false){
+            //send msg
+              $msg = "You have been invited to join BeeCab the network of cab services near you. Get it from Google Play store (link)";
+              $smsSender = new BeeCabSMSMobileAPI();
+              $smsSender->sendSms("$contact", "$msg");
           }
 
            //echo json response
@@ -1374,6 +1443,13 @@ $td_id = $app->request->post('tdID');
             $response["message"] = "Sorry! Failed at creating referral";
           }
 
+          //send sms from here
+        if($response["error"] ==false){
+          //send msg
+            $msg = "You have been invited to join BeeCab the network of cab services near you. Get it from Google Play store (link)";
+            $smsSender = new BeeCabSMSMobileAPI();
+            $smsSender->sendSms("$contact", "$msg");
+        }
            //echo json response
            echoResponse(201, $response);
           }

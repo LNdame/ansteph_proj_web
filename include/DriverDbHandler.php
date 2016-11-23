@@ -113,6 +113,7 @@ class DriverDbHandler {
 
 			if($result){
 				$otp_result = $this->createOtpDriver($id, $otp);
+        $this->saveDriverDummyProfile($id, $carmodel, $numplate);
 				return USER_CREATED_SUCCESSFULLY;
 			}else{
 				return USER_CREATE_FAILED;
@@ -258,7 +259,10 @@ class DriverDbHandler {
         //activate the user
         //echo $id;
         $this->activateUserStatus($id);
-
+        //update the referral if any
+        $this-> updatereferral($mobile);
+        $this-> updatereferral($email);
+        //  return user
         $user =array();
         $user["name"] = $name;
                 $user["email"] = $email;
@@ -352,111 +356,68 @@ class DriverDbHandler {
   }
 
 
-  public function UpdateDriverProfileImage( $td_id, $image_tag)
+  public function updatedriverprofileFromEn($td_id,$image,$image_tag)// testing this to used for updating the profile
   {
-  // the upload folder
-    $upload_path ="driverprofileimages/";
-    $upload_target =dirname(__FILE__) . '/driverprofileimages/';
-    $server_ip = gethostbyname(gethostname());
+    // the upload folder
+      $upload_path ="driverprofileimages/";
+      $upload_target =dirname(__FILE__) . '/driverprofileimages/';
+      //$server_ip = gethostbyname(gethostname());
+      $server_ip = SERVERNAME;
+      //creating the upload url
+      $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
 
-  //createing the upload url
-    $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
-
-    $response = array();
-
-    //getting file info from the request
-    $fileinfo = pathinfo($_FILES['image']['name']);
-    //echo "$fileinfo" ;
-    $extension = $fileinfo['extension'];
-
-    //file url to store in database
-    $file_url = " ";
-  //file path to upload in the server
-    $file_path= " ";
+      //file url to store in database
+      $file_url = $upload_url .$td_id."_".$image_tag."_01.jpg";
+      $file_path= $upload_target.$td_id."_".$image_tag."_01.jpg";
 
 
-  switch ($image_tag) {
-        case 'driver':
-        //file url to store in database
-        $file_url = $upload_url .$td_id."_01".'.'.$extension;
-      //file path to upload in the server
-        $file_path= $upload_target.$td_id."_01".'.'.$extension;
-          break;
+      try {
 
-        case 'driver2':
-        //file url to store in database
-        $file_url = $upload_url .$td_id."_02". '.'.$extension;
-      //file path to upload in the server
-        $file_path= $upload_target.$td_id."_02". '.'.$extension;
-            break;
+        $stmt = $this->conn->prepare("UPDATE `driver_profile_image` SET `car_picture_url`=? WHERE `taxi_driver_id`= ? and `image_tag`=?");
 
-        case 'car_back':
-        //file url to store in database
-        $file_url = $upload_url .$td_id."_03".'.'.$extension;
-      //file path to upload in the server
-        $file_path= $upload_target.$td_id."_03".'.'.$extension;
-              break;
-        default:
-          # code...
-          break;
+    //    $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
+        $stmt->bind_param("sss", $file_url,$td_id,$image_tag);
+
+        $result =$stmt->execute();
+
+        $stmt->close();
+        if($result){
+
+            file_put_contents($file_path, base64_decode($image));
+            echo "Successfully uploaded";
+            return UPDATED;
+
+        }else{
+          return CREATE_FAILED;
+        }
+
+      } catch (Exception $e) {
+
+        $response['error'] = true;
+        $response['message']= $e->getMessage();
+      }
+      echo json_encode($response);
+
+
   }
 
 
 
-  //trying to update the file in the directory
-  try {
-    //saving the file
-    move_uploaded_file($_FILES['image']['tmp_name'], $file_path);
-    $stmt = $this->conn->prepare("UPDATE `driver_profile_image` SET `car_picture_url`=? WHERE `taxi_driver_id`=? AND `image_tag`=?");
-
-    $stmt->bind_param("sss",$file_url, $td_id,$image_tag);
-
-    $result =$stmt->execute();
-  //  $new_td_id =$stmt->insert_id;
-
-    //closing the statement
-    $stmt->close();
-    if($result){
-
-      return CREATED_SUCCESSFULLY;
-    //  $response['error'] = false;
-      //$response['url'] = $file_url;
-
-    }else{
-      return CREATE_FAILED;
-    }
-
-  } catch (Exception $e) {
-    $response['error'] = true;
-    $response['message']= $e->getMessage();
-  }
-  echo json_encode($response);
-
-  }
-
-  /*
-  $age = array("Peter"=>"35", "Ben"=>"37", "Joe"=>"43");
-
-  foreach($age as $x => $x_value) {
-      echo "Key=" . $x . ", Value=" . $x_value;
-      echo "<br>";
-  }
-  */
 
 
 
-  public function saveDriverDummyProfile( $td_id)
+  public function saveDriverDummyProfile( $td_id,$carmodel, $numplate) //being used to save the dummy profile
   {
   // the upload folder
     $upload_path ="DummiesProfilePic/";
     $upload_target =dirname(__FILE__) . '/DummiesProfilePic/';
-    $server_ip = gethostbyname(gethostname());
-
+  //  $server_ip = gethostbyname(gethostname());
+    $server_ip = SERVERNAME;
   //createing the upload url
-    $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+    $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
 
     $imageArray = array( 'driver'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'back' => $upload_url."car_back.jpg" );
-  $response = array();
+    $response = array();
 
 
 
@@ -478,10 +439,10 @@ class DriverDbHandler {
           $stmt->close();
         }
 
-        //saving the dummy profile
-        $stmt = $this->conn->prepare("INSERT INTO `driver_profile`(  `taxi_driver_id` ) VALUES (?)");
+        //saving the dummy profile !!!!!!!!!! this is missing some param
+        $stmt = $this->conn->prepare("INSERT INTO `driver_profile`(  `taxi_driver_id`,`car_model`, `car_numberplate` ) VALUES (?,?,?)");
 
-        $stmt->bind_param("s", $td_id);
+        $stmt->bind_param("sss", $td_id, $carmodel, $numplate);
 
         $result =$stmt->execute();
 
@@ -546,6 +507,19 @@ public function retrieveDriverProfile($tc_id)
 }
 
 
+public function retrieveDriverProfileForClient($tc_id)
+{
+  $stmt = $this->conn->prepare("SELECT dp.*, td_name,td_mobile,td_email,td_year,td_license FROM `driver_profile` dp JOIN taxi_driver td ON dp.`taxi_driver_id`=td.`id` WHERE dp.`taxi_driver_id` = ?  ");
+  //binding params
+ $stmt->bind_param("s",$tc_id);
+
+  $stmt->execute();
+  $images = $stmt->get_result();
+  $stmt->close();
+  return $images;
+}
+
+
 public function retrieveDriverImages($td_id)
 {
 //  echo "$tc_id";
@@ -584,9 +558,13 @@ function createreferral($contact, $td_id)
 
   public function updatereferral($ref_contact)
   {
-    $stmt = $this->conn->prepare("UPDATE driver_referral set ref_status = 1 WHERE ref_provided_contact = ?");
-  $stmt->bind_param("s", $ref_contact);
-  $stmt->execute();
+      $stmt = $this->conn->prepare("UPDATE driver_referral set ref_status = 1 WHERE ref_provided_contact = ?");
+      $stmt->bind_param("s", $ref_contact);
+      $stmt->execute();
+
+      $stmt = $this->conn->prepare("UPDATE client_referral set ref_status = 1 WHERE ref_provided_contact = ?");
+      $stmt->bind_param("s", $ref_contact);
+      $stmt->execute();
 
   }
 

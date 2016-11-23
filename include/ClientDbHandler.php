@@ -142,6 +142,16 @@ class ClientDbHandler {
 		return $result;
 	}
 
+  //Retrieve the OTP from having the cellphone number
+  public function retrieveOTP($mobile)
+  {
+    $stmt=$this->conn->prepare("SELECT sc.`sms_code`, tc.`id`, tc.`tc_mobile` FROM `taxi_client` tc join sms_code_client sc on tc.`id` = sc.`sms_tc_id` where tc.`tc_mobile` = ?");
+		$stmt->bind_param("s",$mobile);
+		$stmt->execute();
+    $retotp = $stmt->get_result();
+    $stmt->close();
+    return $retotp;
+  }
 
 	//Checking whether a taxi client exist
 	public function isTaxiClientExists($mobile)
@@ -226,7 +236,10 @@ class ClientDbHandler {
 				//activate the user
 				//echo $id;
 				$this->activateUserStatus($id);
-
+        //update the referral if any
+        $this-> updatereferral($mobile);
+        $this-> updatereferral($email);
+      //  return user
 				$user =array();
 				$user["name"] = $name;
                 $user["email"] = $email;
@@ -236,6 +249,7 @@ class ClientDbHandler {
                 $user["created_at"] = $created_at;
 
 				$stmt->close();
+
 
 				return $user;
 
@@ -259,15 +273,9 @@ class ClientDbHandler {
 		$stmt->bind_param("s", $tc_id);
 		$stmt->execute();
 
+
+
     }
-
-
-
-
-
-
-
-
 
 
    public function getAllNames() {
@@ -385,74 +393,22 @@ $stmt->bind_param("s",$email);
   }
 
 
-/* ------------- `Save profile` table method ------------------ */
+/* ------------- `Save profile` table method testing ground ------------------ */
 
 
 
-  public function saveClientDummyProfile( $td_id, $name)
-  {
-  // the upload folder
-    $upload_path ="DummiesProfilePic/";
-    $upload_target =dirname(__FILE__) . '/DummiesProfilePic/';
-    $server_ip = gethostbyname(gethostname());
-
-  //creating the upload url
-    $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
-
-    $imageArray = array( 'profile'=>$upload_url."client.jpg"  );
-  $response = array();
 
 
 
-  //trying to save the file in the directory
-  try {
-    //saving the file
-        $result=null;
-
-        foreach ($imageArray as $key => $file_url) {
-
-          $stmt = $this->conn->prepare("INSERT INTO `client_profile_image`( `profile_picture_url`, `taxi_client_id`, `username`,`image_tag` ) VALUES (?,?,?,?)");
-
-          $stmt->bind_param("ssss",$file_url, $td_id,$name,$key);
-
-          $result =$stmt->execute();
-        //  $new_td_id =$stmt->insert_id;
-
-          //closing the statement
-          $stmt->close();
-        }
-
-
-        //end saving the dummy profile
-
-      if($result){
-
-        return CREATED_SUCCESSFULLY;
-      //  $response['error'] = false;
-        //$response['url'] = $file_url;
-
-      }else{
-        return CREATE_FAILED;
-      }
-
-  } catch (Exception $e) {
-    $response['error'] = true;
-    $response['message']= $e->getMessage();
-  }
-  echo json_encode($response);
-
-  }
-
-
-  public function saveprofileFromEn21($tc_id,$image,$username)
+  public function saveprofileFromEn21($tc_id,$image,$username)//not used
   {
     // the upload folder
       $upload_path ="clientprofileimages/";
       $upload_target =dirname(__FILE__) . '/clientprofileimages/';
-      $server_ip = gethostbyname(gethostname());
-
+    //  $server_ip = gethostbyname(gethostname());
+      $server_ip = SERVERNAME;
       //creating the upload url
-      $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
+      $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
 
       //file url to store in database
       $file_url = $upload_url .$tc_id."_01.jpg";
@@ -489,55 +445,11 @@ $stmt->bind_param("s",$email);
 
   }
 
-  public function saveprofileFromEn($tc_id,$image,$username)
-  {
-    // the upload folder
-      $upload_path ="clientprofileimages/";
-      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
-      $server_ip = gethostbyname(gethostname());
-
-      //creating the upload url
-      $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
-
-      //file url to store in database
-      $file_url = $upload_url .$tc_id."_01.jpg";
-      $file_path= $upload_target.$tc_id."_01.jpg";
-      $image_tag="profile";
-
-      try {
-
-        $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=?,`image_tag`=?,`username`=? WHERE`taxi_client_id`= ?");
-
-    //    $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
-        $stmt->bind_param("ssss", $file_url,$image_tag,$username,$tc_id);
-
-        $result =$stmt->execute();
-
-        $stmt->close();
-        if($result){
-
-            file_put_contents($file_path, base64_decode($image));
-            echo "Successfully uploaded";
-            return UPDATED;
-
-        }else{
-          return CREATE_FAILED;
-        }
-
-      } catch (Exception $e) {
-
-        $response['error'] = true;
-        $response['message']= $e->getMessage();
-      }
-      echo json_encode($response);
-
-
-  }
 
 
 
 
-  public function saveprofileFromEncode($tc_id,$base64_string_img)
+  public function saveprofileFromEncode($tc_id,$base64_string_img) //not used - testing
   {
     // the upload folder
       $upload_path ="clientprofileimages/";
@@ -601,11 +513,233 @@ $stmt->bind_param("s",$email);
   }
 
 
+        function saveprofile($username, $image,$filename,$type, $size,$clientID) //not used -deprecated
+        {
+          $con =mysql_connect("localhost","root","root");
+          mysql_select_db("taxi",$con);
+          $query = "INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values('$username','$type','$size','$image','$clientID')";
+
+          $res =mysql_query($query,$con);
+
+          if($res)
+          {
+            echo "inserted";
+          }else{
+            echo "not inserted";
+          }
+
+          mysql_close($con);
+        }
+
+
+        function createClientProfile($username, $image,$filename,$type, $size,$clientID)//not used -deprecated
+        {
+          $stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values(?,?,?,?,?)");
+          //$stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size, tc_cp_id) values(?,?,?,?)");
+          //Binding the params
+          $null = NULL;
+          //$stmt->bind_param("ssibi" ,$username,$type,$size,$null,$clientID);
+          $stmt->bind_param("ssibi" ,$username,$type,$size,$image,$clientID);
+        //	$stmt->bind_param("ssii" ,$username,$type,$size,$clientID);
+          //$stmt->send_long_data(0, file_get_contents($filename));
+          $result=$stmt->execute();
+          $new_tc_id =$stmt->insert_id;
+
+          //closing the statement
+            $stmt->close();
+          if($result){
+              echo "inserted";
+              return USER_CREATED_SUCCESSFULLY;
+            }else{
+              return USER_CREATE_FAILED;
+            }
+          }
+
+
+
+
+
+                public function UpdateClientProfileImage( $tc_id) //not used
+                {
+                    // the upload folder
+                      $upload_path ="clientprofileimages/";
+                      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+                  //    $server_ip = gethostbyname(gethostname());
+                      $server_ip = SERVERNAME;
+
+                    //createing the upload url
+                      $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
+
+                      $response = array();
+                      $image_tag='profile';
+                      //getting file info from the request
+                      $fileinfo = pathinfo($_FILES['image']['name']);
+                      //echo "$fileinfo" ;
+                      $extension = $fileinfo['extension'];
+
+                      //file url to store in database
+                      $file_url = " ";
+                    //file path to upload in the server
+                      $file_path= " ";
+
+
+                    switch ($image_tag) {
+                          case 'profile':
+                          //file url to store in database
+                          $file_url = $upload_url .$tc_id."_01".'.'.$extension;
+                        //file path to upload in the server
+                          $file_path= $upload_target.$tc_id."_01".'.'.$extension;
+                            break;
+
+                          default:
+                          //file url to store in database
+                          $file_url = $upload_url .$tc_id."_01".'.'.$extension;
+                        //file path to upload in the server
+                          $file_path= $upload_target.$tc_id."_01".'.'.$extension;
+                            break;
+                    }
+
+
+
+                    //trying to update the file in the directory
+                    try {
+                      //saving the file
+                      move_uploaded_file($_FILES['image']['tmp_name'], $file_path);
+                      $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=? WHERE `taxi_client_id`=? ");
+
+                      $stmt->bind_param("ss",$file_url, $tc_id);
+
+                      $result =$stmt->execute();
+                    //  $new_td_id =$stmt->insert_id;
+
+                      //closing the statement
+                      $stmt->close();
+                      if($result){
+
+                        return UPDATED;
+                      //  $response['error'] = false;
+                        //$response['url'] = $file_url;
+
+                      }else{
+                        return CREATE_FAILED;
+                      }
+
+                    } catch (Exception $e) {
+                      $response['error'] = true;
+                      $response['message']= $e->getMessage();
+                    }
+                    echo json_encode($response);
+
+                }
+
+
+
+  /* ------------- `end of testing ground method ------------------ */
 
 
 
 
   /* ------------- `Profile related method` table method ------------------ */
+
+  public function saveClientDummyProfile( $td_id, $name) //this the save image that you are using
+  {
+  // the upload folder
+    $upload_path ="DummiesProfilePic/";
+    $upload_target =dirname(__FILE__) . '/DummiesProfilePic/';
+    //$server_ip = gethostbyname(gethostname());
+    $server_ip = SERVERNAME;
+  //creating the upload url
+    $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
+
+    $imageArray = array( 'profile'=>$upload_url."client.jpg"  );
+    $response = array();
+
+
+  //trying to save the file in the directory
+  try {
+    //saving the file
+        $result=null;
+
+        foreach ($imageArray as $key => $file_url) {
+
+          $stmt = $this->conn->prepare("INSERT INTO `client_profile_image`( `profile_picture_url`, `taxi_client_id`, `username`,`image_tag` ) VALUES (?,?,?,?)");
+
+          $stmt->bind_param("ssss",$file_url, $td_id,$name,$key);
+
+          $result =$stmt->execute();
+        //  $new_td_id =$stmt->insert_id;
+
+          //closing the statement
+          $stmt->close();
+        }
+
+
+        //end saving the dummy profile
+
+      if($result){
+
+        return CREATED_SUCCESSFULLY;
+      //  $response['error'] = false;
+        //$response['url'] = $file_url;
+
+      }else{
+        return CREATE_FAILED;
+      }
+
+  } catch (Exception $e) {
+    $response['error'] = true;
+    $response['message']= $e->getMessage();
+  }
+  echo json_encode($response);
+
+  }
+
+
+  public function saveprofileFromEn($tc_id,$image,$username)// used for updating the profile
+  {
+    // the upload folder
+      $upload_path ="clientprofileimages/";
+      $upload_target =dirname(__FILE__) . '/clientprofileimages/';
+      //$server_ip = gethostbyname(gethostname());
+      $server_ip = SERVERNAME;
+      //creating the upload url
+      $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
+
+      //file url to store in database
+      $file_url = $upload_url .$tc_id."_01.jpg";
+      $file_path= $upload_target.$tc_id."_01.jpg";
+      $image_tag="profile";
+
+      try {
+
+        $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=?,`image_tag`=?,`username`=? WHERE`taxi_client_id`= ?");
+
+    //    $stmt = $this->conn->prepare("INSERT INTO client_profile (cp_username, cp_profilepic) values ('JonJon',?)");
+        $stmt->bind_param("ssss", $file_url,$image_tag,$username,$tc_id);
+
+        $result =$stmt->execute();
+
+        $stmt->close();
+        if($result){
+
+            file_put_contents($file_path, base64_decode($image));
+            echo "Successfully uploaded";
+            return UPDATED;
+
+        }else{
+          return CREATE_FAILED;
+        }
+
+      } catch (Exception $e) {
+
+        $response['error'] = true;
+        $response['message']= $e->getMessage();
+      }
+      echo json_encode($response);
+
+
+  }
+
 
       public function retrieveClientProfile($tc_id)
       {
@@ -619,122 +753,6 @@ $stmt->bind_param("s",$email);
         $stmt->close();
         return $profile;
       }
-
-
-      function saveprofile($username, $image,$filename,$type, $size,$clientID)
-      {
-        $con =mysql_connect("localhost","root","root");
-        mysql_select_db("taxi",$con);
-        $query = "INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values('$username','$type','$size','$image','$clientID')";
-
-        $res =mysql_query($query,$con);
-
-        if($res)
-        {
-          echo "inserted";
-        }else{
-          echo "not inserted";
-        }
-
-        mysql_close($con);
-      }
-
-
-      function createClientProfile($username, $image,$filename,$type, $size,$clientID)
-      {
-        $stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values(?,?,?,?,?)");
-        //$stmt =$this->conn->prepare("INSERT INTO client_profile(cp_username, type, size, tc_cp_id) values(?,?,?,?)");
-        //Binding the params
-        $null = NULL;
-        //$stmt->bind_param("ssibi" ,$username,$type,$size,$null,$clientID);
-        $stmt->bind_param("ssibi" ,$username,$type,$size,$image,$clientID);
-      //	$stmt->bind_param("ssii" ,$username,$type,$size,$clientID);
-        //$stmt->send_long_data(0, file_get_contents($filename));
-        $result=$stmt->execute();
-        $new_tc_id =$stmt->insert_id;
-
-        //closing the statement
-          $stmt->close();
-        if($result){
-            echo "inserted";
-            return USER_CREATED_SUCCESSFULLY;
-          }else{
-            return USER_CREATE_FAILED;
-          }
-        }
-
-      public function UpdateClientProfileImage( $tc_id)
-      {
-          // the upload folder
-            $upload_path ="clientprofileimages/";
-            $upload_target =dirname(__FILE__) . '/clientprofileimages/';
-            $server_ip = gethostbyname(gethostname());
-
-          //createing the upload url
-            $upload_url = 'http://'.$server_ip.':8888/taxi/include/'.$upload_path;
-
-            $response = array();
-            $image_tag='profile';
-            //getting file info from the request
-            $fileinfo = pathinfo($_FILES['image']['name']);
-            //echo "$fileinfo" ;
-            $extension = $fileinfo['extension'];
-
-            //file url to store in database
-            $file_url = " ";
-          //file path to upload in the server
-            $file_path= " ";
-
-
-          switch ($image_tag) {
-                case 'profile':
-                //file url to store in database
-                $file_url = $upload_url .$tc_id."_01".'.'.$extension;
-              //file path to upload in the server
-                $file_path= $upload_target.$tc_id."_01".'.'.$extension;
-                  break;
-
-                default:
-                //file url to store in database
-                $file_url = $upload_url .$tc_id."_01".'.'.$extension;
-              //file path to upload in the server
-                $file_path= $upload_target.$tc_id."_01".'.'.$extension;
-                  break;
-          }
-
-
-
-          //trying to update the file in the directory
-          try {
-            //saving the file
-            move_uploaded_file($_FILES['image']['tmp_name'], $file_path);
-            $stmt = $this->conn->prepare("UPDATE `client_profile_image` SET `profile_picture_url`=? WHERE `taxi_client_id`=? ");
-
-            $stmt->bind_param("ss",$file_url, $tc_id);
-
-            $result =$stmt->execute();
-          //  $new_td_id =$stmt->insert_id;
-
-            //closing the statement
-            $stmt->close();
-            if($result){
-
-              return UPDATED;
-            //  $response['error'] = false;
-              //$response['url'] = $file_url;
-
-            }else{
-              return CREATE_FAILED;
-            }
-
-          } catch (Exception $e) {
-            $response['error'] = true;
-            $response['message']= $e->getMessage();
-          }
-          echo json_encode($response);
-
-      }
-
 
       /* ------------- `referral program related method` table method ------------------ */
 
@@ -762,8 +780,12 @@ $stmt->bind_param("s",$email);
         public function updatereferral($ref_contact)
         {
           $stmt = $this->conn->prepare("UPDATE client_referral set ref_status = 1 WHERE ref_provided_contact = ?");
-        $stmt->bind_param("s", $ref_contact);
-        $stmt->execute();
+          $stmt->bind_param("s", $ref_contact);
+          $stmt->execute();
+
+          $stmt = $this->conn->prepare("UPDATE driver_referral set ref_status = 1 WHERE ref_provided_contact = ?");
+          $stmt->bind_param("s", $ref_contact);
+          $stmt->execute();
 
         }
 

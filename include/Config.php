@@ -16,4 +16,6 @@ define('CREATE_FAILED', 1);
 define('ALREADY_EXISTED', 2);
 define('UPDATED', 3);
 define('FIREBASEURL','https://fir-messagingtest-bbff5.firebaseio.com/' );
+
+define('SERVERNAME','www.beecab.net');
 ?>
