@@ -658,6 +658,36 @@ $app->get('/resendotp/:mobile', function($mobile){
   );
 
 
+  $app->post(
+      '/update_driver_profile',
+      function () use($app) {
+          //check param
+        //  verifyRequiredParams(array('id'));
+      $response = array();
+      $td_id= $app->request->post('id');
+      $carmodel= $app->request->post('car_model');
+      $carnumberplate= $app->request->post('car_numberplate');
+      $currentcity= $app->request->post('current_city');
+
+
+
+      $db = new DriverDbHandler();
+      $result = $db->updateprofile($carmodel, $carnumberplate, $currentcity, $td_id);
+
+      if($result ==UPDATED){
+
+        $response["error"] = false;
+        $response["message"] = "Great! Your profile has been updated...Mr Transporter";
+      //  $response["profile"] = $user;
+      }else{
+        $response["error"] = true;
+        $response["message"] = "Sorry! Failed at creating account";
+      }
+
+       //echo json response
+       echoResponse(201, $response);
+      }
+  );
 
 
 
@@ -962,6 +992,38 @@ $app->get('/resendotp/:mobile', function($mobile){
 
     );
 
+    $app->get('/retrieveallpendingjobpercity/:td_id', function($td_id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->retrievePendingJobPerCity($td_id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["jr_pickup_add"] = $job["jr_pickup_add"];
+              $tmp["jr_destination_add"] = $job["jr_destination_add"];
+              $tmp["jr_pickup_coord"] = $job["jr_pickup_coord"];
+              $tmp["jr_destination_coord"] = $job["jr_destination_coord"];
+              $tmp["jr_pickup_time"] = $job["jr_pickup_time"];
+              $tmp["jr_proposed_fare"] = $job["jr_proposed_fare"];
+              $tmp["jr_tc_id"] = $job["jr_tc_id"];
+              $tmp["jr_shared"] = $job["jr_shared"];
+              $tmp["jr_status"] = $job["jr_status"];
+
+              $tmp["jr_city"] = $job["jr_city"];
+              $tmp["jr_time_created"] = $job["jr_time_created"];
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
 
 
     $app->put('/updatejob/:id/:code', function($id,$code){
@@ -1018,6 +1080,12 @@ $app->get('/resendotp/:mobile', function($mobile){
       {
         $response["error"] = true;
         $response["message"] = "Oops! An error occurred while sending the request";
+      }
+
+      if($response["error"] ==false)
+      { //notify the client
+        $db= new NotHandler();
+        $result=  $db->sendJobResponseNotification($jr_id);
       }
 
       //echo json response
@@ -1255,19 +1323,29 @@ $td_id = $app->request->post('tdID');
       $message = array('message' => "$msg" );
       $response = array();
       $db= new NotHandler();
-      $db->send_notification($token, $message);
+    $result=  $db->send_notification($token, $message);
 
+      if($result)
+      {
+        echoResponse(200, $result);
+      }
 
       });
 
+      $app->post('/test_send_push', function()use($app){
 
+        $id= $app->request->post('id');
 
+        $response = array();
+        $db= new NotHandler();
+        $result=  $db->sendJobResponseNotification($id);
 
+        if($result)
+        {
+          echoResponse(200, $result);
+        }
 
-
-
-
-
+        });
 
       /* -------------********************* `Test platform realted routes *********************------------------ */
       $app->post('/fbregister', function()use($app){

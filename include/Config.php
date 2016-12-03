@@ -18,4 +18,7 @@ define('UPDATED', 3);
 define('FIREBASEURL','https://fir-messagingtest-bbff5.firebaseio.com/' );
 
 define('SERVERNAME','www.beecab.net');
+
+// Firebase API Key
+define('FIREBASE_API_KEY', 'AIzaSyDSN_LlBbp4ZXEsDXAu8QbTAnPlBA0N7pY');
 ?>

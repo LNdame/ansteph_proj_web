@@ -196,24 +196,6 @@ class DriverDbHandler {
 
 
 
-	function saveprofile($username, $image,$filename,$type, $size,$clientID)
-	{
-		$con =mysql_connect("localhost","root","root");
-		mysql_select_db("taxi",$con);
-		$query = "INSERT INTO client_profile(cp_username, type, size,cp_profilepic, tc_cp_id) values('$username','$type','$size','$image','$clientID')";
-
-		$res =mysql_query($query,$con);
-
-		if($res)
-		{
-			echo "inserted";
-		}else{
-			echo "not inserted";
-		}
-
-		mysql_close($con);
-	}
-
 
 
 
@@ -259,6 +241,9 @@ class DriverDbHandler {
         //activate the user
         //echo $id;
         $this->activateUserStatus($id);
+
+        //initial company registration
+        $this->initialCompanyRegistration($id, $name);
         //update the referral if any
         $this-> updatereferral($mobile);
         $this-> updatereferral($email);
@@ -288,12 +273,25 @@ class DriverDbHandler {
     public function activateUserStatus($td_id)
     {
       $stmt = $this->conn->prepare("UPDATE taxi_driver set td_status = 1 WHERE id = ?");
-    $stmt->bind_param("i", $td_id);
+    $stmt->bind_param("s", $td_id);
     $stmt->execute();
 
     $stmt = $this->conn->prepare("UPDATE sms_code_driver set sms_status = 1 WHERE sms_td_id = ?");
-    $stmt->bind_param("i", $td_id);
+    $stmt->bind_param("s", $td_id);
     $stmt->execute();
+
+    }
+
+/* -------------***********************Initial Company Registration table method ***********************------------------ */
+  public function initialCompanyRegistration($td_id, $fullname)
+  {
+      $stmt = $this->conn->prepare("INSERT INTO `current_company_log`( `company_id`, `taxi_driver_id`, `company_name`, `fullname_td` ) VALUES (1123,?,'BeeCab',?)");
+      $stmt->bind_param("ss", $td_id,$fullname);
+      $stmt->execute();
+
+      $stmt = $this->conn->prepare("INSERT INTO `history_company`(  `company_id`, `taxi_driver_id`, `company_name`, `fullname_td` ) VALUES (1123,?,'BeeCab',?)");
+      $stmt->bind_param("ss", $td_id,$fullname);
+      $stmt->execute();
 
     }
 
@@ -416,7 +414,7 @@ class DriverDbHandler {
   //createing the upload url
     $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
 
-    $imageArray = array( 'driver'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'back' => $upload_url."car_back.jpg" );
+    $imageArray = array( 'driver'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'car_back' => $upload_url."car_back.jpg" );
     $response = array();
 
 
@@ -532,6 +530,27 @@ public function retrieveDriverImages($td_id)
   $stmt->close();
   return $images;
 }
+
+
+function updateprofile($carmodel, $carnumberplate, $currentcity,$td_id)
+{
+
+  $stmt = $this->conn->prepare("UPDATE `driver_profile` SET `car_model`=?,`car_numberplate`=?,`current_city`=? WHERE `taxi_driver_id`= ?");
+  $stmt->bind_param("ssss", $carmodel, $carnumberplate, $currentcity,$td_id);
+  $result=$stmt->execute();
+  $stmt->close();
+  if($result){
+      return UPDATED;
+
+    }else{
+      return CREATE_FAILED;
+    }
+
+}
+
+
+
+
 
 /* ------------- `referral program related method` table method ------------------ */
 

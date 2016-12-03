@@ -127,11 +127,13 @@ class JobDbHandler {
   }
 
 
-  public function retrievePendingJobPerCity($city)
+  public function retrievePendingJobPerCity($td_id)
   {
-    $stmt = $this->conn->prepare("SELECT * FROM `journey_request`  WHERE `jr_tc_id` = ? AND `jr_status` = 0");
+    $city = $this->getDriverCity($td_id);
+  
+    $stmt = $this->conn->prepare("SELECT * FROM `journey_request`  WHERE `jr_city` = ? AND `jr_status` = 0");
     //binding params
-    $stmt->bind_param("s",$tc_id);
+    $stmt->bind_param("s",$city);
 
     $stmt->execute();
     $jobs = $stmt->get_result();
@@ -139,6 +141,19 @@ class JobDbHandler {
     return $jobs;
   }
 
+  public function getDriverCity($td_id)
+  {
+    $stmt = $this->conn->prepare("SELECT `current_city` FROM `driver_profile` WHERE `taxi_driver_id` = ?");
+    $stmt->bind_param("s", $td_id);
+    if ($stmt->execute()) {
+      $user_city = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+      return $user_city["current_city"];
+      } else {
+      return NULL;
+      }
+
+  }
 
   public function retrieveAssignedJob($tc_id)
   {
