@@ -39,7 +39,7 @@ class NotHandler {
       $push = new Push();
 
        // notification title
-      $title = "New Job Reponse";
+      $title = "New job reponse";
 
       // notification message
        $message = "A driver responded to your request";
@@ -49,8 +49,8 @@ class NotHandler {
 
        // optional payload
               $payload = array();
-              $payload['tag'] = 'BeeCab';
-              $payload['score'] = '15.6';
+              $payload['tag'] = 'BeeCab_response';
+                $payload['jobID'] = "$jr_id";
 
        // whether to include to image or not
         $include_image = FALSE;
@@ -70,6 +70,133 @@ class NotHandler {
 
         $response = $firebase->send($regId, $json);
         //echo json_encode($response);
+
+    }
+
+
+    public function sendJobAssignmentNotification($td_id)
+    {
+      $firebase = new Firebase();
+      $push = new Push();
+
+       // notification title
+      $title = "New job assignment";
+
+      // notification message
+       $message = "A job has been assigned to you. Please confirm pickup";
+
+       // push type - single user / topic
+       $push_type  ="individual";
+
+       // optional payload
+              $payload = array();
+              $payload['tag'] = 'BeeCab_assign';
+                $payload['jobID'] = "";
+
+       // whether to include to image or not
+        $include_image = FALSE;
+        if ($include_image) {
+            $push->setImage('http://api.androidhive.info/images/minion.jpg');
+        } else {
+            $push->setImage('');
+        }
+
+        $push->setTitle($title);
+        $push->setMessage($message);
+        $push->setIsBackground(FALSE);
+        $push->setPayload($payload);
+
+        $json = $push->getPush();
+        $regId = $this->retrieveDriverToken($td_id);
+
+        $response = $firebase->send($regId, $json);
+        //echo json_encode($response);
+
+    }
+
+
+    public function sendDriverInRouteNotification($id)
+    {
+      $firebase = new Firebase();
+      $push = new Push();
+
+       // notification title
+      $title = "Assignment accepted";
+
+      // notification message
+       $message = "Your driver is in route";
+
+       // push type - single user / topic
+       $push_type  ="individual";
+
+       // optional payload
+              $payload = array();
+              $payload['tag'] = 'BeeCab_inroute';
+                $payload['jobID'] = "$id";
+
+       // whether to include to image or not
+        $include_image = FALSE;
+        if ($include_image) {
+            $push->setImage('http://api.androidhive.info/images/minion.jpg');
+        } else {
+            $push->setImage('');
+        }
+
+        $push->setTitle($title);
+        $push->setMessage($message);
+        $push->setIsBackground(FALSE);
+        $push->setPayload($payload);
+
+        $json = $push->getPush();
+        $tc_id =$this->retrieveClientIDInAcRequest($id);
+
+        $regId = $this->retrieveClientToken($tc_id);
+
+        $response = $firebase->send($regId, $json);
+
+
+    }
+
+
+    public function sendRequestForClosureNotification($id)
+    {
+      $firebase = new Firebase();
+      $push = new Push();
+
+       // notification title
+      $title = "Close job";
+
+      // notification message
+       $message = "Your driver requested a job closure";
+
+       // push type - single user / topic
+       $push_type  ="individual";
+
+       // optional payload
+              $payload = array();
+              $payload['tag'] = 'BeeCab_closure';
+              $payload['jobID'] = "$id";
+
+       // whether to include to image or not
+        $include_image = FALSE;
+        if ($include_image) {
+            $push->setImage('http://api.androidhive.info/images/minion.jpg');
+        } else {
+            $push->setImage('');
+        }
+
+        $push->setTitle($title);
+        $push->setMessage($message);
+        $push->setIsBackground(FALSE);
+        $push->setPayload($payload);
+
+        $json = $push->getPush();
+        $tc_id =$this->retrieveClientIDInAcRequest($id);
+
+        $regId = $this->retrieveClientToken($tc_id);
+
+        $response = $firebase->send($regId, $json);
+
 
     }
 
@@ -141,6 +268,22 @@ class NotHandler {
       }
 
     }
+
+    public function retrieveClientIDInAcRequest($id)
+    {
+      $stmt = $this->conn->prepare("SELECT `ar_tc_id` FROM `accepted_request` WHERE `ar_jr_id`=  ?");
+      $stmt->bind_param("i", $id);
+      if ($stmt->execute()) {
+      $tc_id = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      return $tc_id["ar_tc_id"];
+      } else {
+      return NULL;
+      }
+
+    }
+
 
     public function retrieveClientToken($id)
     {

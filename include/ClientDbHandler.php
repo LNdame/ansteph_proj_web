@@ -297,15 +297,15 @@ class ClientDbHandler {
 
         require_once 'PassHash.php';
 
-        if(!$this->isTaxiClientExists($mobile))
+        if($this->isTaxiClientExists($mobile))
     		{
             $sms = new BeeCabSMSMobileAPI();
             $prov_password = "prov_".rand(10000, 99999);
 
             //Encrypting the password
             $password_hash = PassHash::hash($prov_password);
-            echo "$prov_password";
-            echo "$password_hash";
+            //echo "$prov_password";
+            //echo "$password_hash";
             //send the new password via send_sms
             $msg = "Your password has been temporarily changed to: ".$prov_password. " BeeCab";
             $sms->sendSms("$mobile",$msg);

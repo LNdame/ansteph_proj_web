@@ -12,8 +12,9 @@
  require_once './../include/JobDbHandler.php';
  require_once './../include/ClientDbHandler.php';
  require_once './../include/NotHandler.php';
+ require_once './../include/AdvertHandler.php';
  require_once './../include/send_sms.php';
-require './../libs/Slim/Slim.php';
+ require './../libs/Slim/Slim.php';
 
 \Slim\Slim::registerAutoloader();
 
@@ -302,7 +303,7 @@ $app->get('/retrievetcuser/:mobile/:password',
 
       }else{
         $response["error"] = true;
-  			$response["message"] = "Sorry! We could not recognised this account.";
+  			$response["message"] = "Sorry! We could not recognise this account.";
       }
 
     //echo 'This is a get route';
@@ -592,7 +593,7 @@ $app->get('/resendotp/:mobile', function($mobile){
     			$response["profile"] = $user;
         }else{
           $response["error"] = true;
-    			$response["message"] = "Sorry! We could not recognised this account.";
+    			$response["message"] = "Sorry! We could not recognise this account.";
         }
 
       //echo 'This is a get route';
@@ -626,6 +627,46 @@ $app->get('/resendotp/:mobile', function($mobile){
   	   echoResponse(201, $response);
       }
   );
+
+
+  $app->put('/lostpassworddriver/:mobile', function($mobile){
+
+
+    $response = array();
+    $db= new DriverDbHandler();
+
+    $result =$db->createNewPassword($mobile);
+    if($result==UPDATED)
+    {
+      $response["error"] = false;
+      $response["message"] = "Password updated";
+    }else{
+      $response["error"] = true;
+      $response["message"] = "Oops! Request failed to update";
+    }
+    echoResponse(200, $response);
+  });
+
+
+  $app->put('/changepassworddriver/:password/:tdID', function($password, $tdID){
+
+
+    $response = array();
+    $db= new DriverDbHandler();
+
+    $result =$db->updateChangedPassword($password, $tdID);
+    if($result==UPDATED)
+    {
+      $response["error"] = false;
+      $response["message"] = "Password updated";
+    }else{
+      $response["error"] = true;
+      $response["message"] = "Oops! Request failed to update";
+    }
+    echoResponse(200, $response);
+  });
+
+
 
 //being use
   $app->post(
@@ -924,6 +965,41 @@ $app->get('/resendotp/:mobile', function($mobile){
     );
 
 
+    $app->get('/retrieveJobPerID/:id', function($id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->retrieveJobPerID($id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["jr_pickup_add"] = $job["jr_pickup_add"];
+              $tmp["jr_destination_add"] = $job["jr_destination_add"];
+              $tmp["jr_pickup_coord"] = $job["jr_pickup_coord"];
+              $tmp["jr_destination_coord"] = $job["jr_destination_coord"];
+              $tmp["jr_pickup_time"] = $job["jr_pickup_time"];
+              $tmp["jr_proposed_fare"] = $job["jr_proposed_fare"];
+              $tmp["jr_tc_id"] = $job["jr_tc_id"];
+              $tmp["jr_shared"] = $job["jr_shared"];
+              $tmp["jr_status"] = $job["jr_status"];
+
+              $tmp["jr_city"] = $job["jr_city"];
+              $tmp["jr_time_created"] = $job["jr_time_created"];
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
+
+
+
     $app->get('/retrieveassignjob/:tc_id', function($tc_id){
           $response = array();
           $db = new JobDbHandler();
@@ -1046,6 +1122,13 @@ $app->get('/resendotp/:mobile', function($mobile){
         $response["error"] = true;
         $response["message"] = "Oops! Request failed to update";
       }
+
+      if($response["error"] ==false)
+      { //notify the client
+        $db= new NotHandler();
+        $result=  $db->sendDriverInRouteNotification($id);
+      }
+
       echoResponse(200, $response);
     });
 
@@ -1116,6 +1199,7 @@ $app->get('/resendotp/:mobile', function($mobile){
               $tmp["td_mobile"] = $job["td_mobile"];
               $tmp["co_name"] = $job["co_name"];
               $tmp["car_picture_url"] = $job["car_picture_url"];
+              $tmp["driver_picture_url"] = $job["driver_picture_url"];
               $tmp["image_tag"] = $job["image_tag"];
               array_push($response["jobs"], $tmp);
             }
@@ -1126,6 +1210,38 @@ $app->get('/resendotp/:mobile', function($mobile){
 
     );
 
+    $app->get('/retrievejour_response_img/:jrID', function($jr_id){
+          $response = array();
+          $db = new JobDbHandler();
+
+          $result =$db->getJourneyRequestReponse2($jr_id);
+          if($result){
+            $response["error"] = false;
+            $response["jobs"] = array();
+
+            while ($job = $result->fetch_assoc() ) {
+              $tmp = array();
+              $tmp["id"] = $job["id"];
+              $tmp["TaxiID"] = $job["TaxiID"];
+                $tmp["JorID"] = $job["JorID"];
+              $tmp["jre_proposed_fare"] = $job["jre_proposed_fare"];
+              $tmp["jre_counter_offer"] = $job["jre_counter_offer"];
+              $tmp["td_name"] = $job["td_name"];
+              $tmp["td_company_name"] = $job["td_company_name"];
+              $tmp["td_email"] = $job["td_email"];
+              $tmp["td_mobile"] = $job["td_mobile"];
+              $tmp["co_name"] = $job["co_name"];
+              $tmp["car_picture_url"] = $job["car_picture_url"];
+              $tmp["driver_profile_image"] = $job["driver_profile_image"];
+              $tmp["image_tag"] = $job["image_tag"];
+              array_push($response["jobs"], $tmp);
+            }
+
+            echoResponse(200, $response);
+          }
+    }
+
+    );
 
     $app->post('/createacceptedrequest', function () use ($app){
       //check the params  name, $company_name, $email,  $mobile,$carmodel, $numplate, $license, $year,$apikey
@@ -1140,10 +1256,10 @@ $app->get('/resendotp/:mobile', function($mobile){
       $pickupCoord = $app->request->post('pickupCoord');
       $destCoord = $app->request->post('destCoord');
       $acceptedFare = $app->request->post('acceptedFare');
-$city = $app->request->post('city');
+      $city = $app->request->post('city');
       $tc_id = $app->request->post('tcID');
       $jr_id = $app->request->post('jrID');
-$td_id = $app->request->post('tdID');
+      $td_id = $app->request->post('tdID');
 
         $response = array();
         $db = new JobDbHandler();
@@ -1162,11 +1278,15 @@ $td_id = $app->request->post('tdID');
         $response["message"] = "Oops! An error occurred while sending the request";
       }
 
+      if($response["error"] ==false)
+      { //notify the client
+        $db= new NotHandler();
+        $result=  $db->sendJobAssignmentNotification($td_id);
+      }
       //echo json response
       echoResponse(201, $response);
     }
-
-    );
+ );
 
     $app->put('/updateacceptedrequest/:id/:code', function($id,$code) {
     //  verifyRequiredParams(array('code','id'));
@@ -1193,8 +1313,36 @@ $td_id = $app->request->post('tdID');
         $response["error"] = true;
         $response["message"] = "Oops! Request failed to update";
       }
+
+      if($response["error"] ==false)
+      { //notify the client
+        $db= new NotHandler();
+        $result=  $db->sendDriverInRouteNotification($id);
+      }
       echoResponse(200, $response);
     });
+
+
+
+    $app->put('/requestforjobclosure/:id', function($id) {
+    //  verifyRequiredParams(array('code','id'));
+      //get the params
+    //  $code = $app->request->put('code');
+      //$id = $app->request->put('id');
+
+      $response = array();
+      $db= new NotHandler();
+      $result=  $db->sendRequestForClosureNotification($id);
+
+      $response["error"] = false;
+      $response["message"] = "Request sent";
+
+
+
+
+      echoResponse(200, $response);
+    });
+
 
 
 
@@ -1224,7 +1372,7 @@ $td_id = $app->request->post('tdID');
               $tmp["jre_td_id"] = $job["jre_td_id"];
               $tmp["jr_shared"] = $job["jr_shared"];
               $tmp["jre_status"] = $job["jre_status"];
-
+              $tmp["jre_counter_offer"] = $job["jre_counter_offer"];
               $tmp["jr_city"] = $job["jr_city"];
               $tmp["jr_time_created"] = $job["jr_time_created"];
               array_push($response["jobs"], $tmp);
@@ -1338,7 +1486,7 @@ $td_id = $app->request->post('tdID');
 
         $response = array();
         $db= new NotHandler();
-        $result=  $db->sendJobResponseNotification($id);
+        $result=  $db->sendDriverInRouteNotification($id);
 
         if($result)
         {
@@ -1567,6 +1715,69 @@ $td_id = $app->request->post('tdID');
       }
 
       );
+
+  /* ------------- `advert related route`  ------------------ */
+
+  $app->post(
+      '/saveadvertimage',
+      function () use($app)  {
+          //check param
+      //verifyRequiredParams(array('id','image','username'));
+      $response = array();
+
+      $image= $app->request->post('image');
+      $image_tag= $app->request->post('image_tag');
+      $advert_desc= $app->request->post('advert_desc');
+
+      $db = new AdvertHandler();
+      $result = $db->saveadvertImagefromPostman($image,$image_tag,$advert_desc);
+
+      if($result ==UPDATED){
+
+        $response["error"] = false;
+        $response["message"] = "Great! Your advert image has been added...Awesome";
+      //  $response["profile"] = $user;
+      }else{
+        $response["error"] = true;
+        $response["message"] = "Sorry! Failed at adding image";
+      }
+
+       //echo json response
+       echoResponse(201, $response);
+      }
+  );
+
+  $app->get('/retrieve_advert_image', function(){
+        $response = array();
+        $db = new AdvertHandler();
+
+        $result =$db->retrieveAdvertImages();
+        if($result){
+        //  $response["error"] = false;
+          // $response["message"] = "Image(s) found";
+
+        //  $response["images"] = array();car_model
+      //  $response[] = array();
+          while ($images = $result->fetch_assoc() ) {
+          $tmp = array();
+          $tmp["id"] = $images["id"];
+
+          $tmp["advert_picture_url"] = $images["advert_picture_url"];
+          $tmp["image_tag"] = $images["image_tag"];
+          $tmp["advert_desc"] = $images["advert_desc"];
+
+
+            array_push($response, $tmp);
+          }
+
+          echoResponse(200, $response);
+        }else{
+          $response["error"] = true;
+          $response["message"] = "No Image found";
+        }
+  }
+
+  );
 
 
 /**

@@ -195,7 +195,61 @@ class DriverDbHandler {
   }
 
 
+/* ------------- `retrieve password` table method ------------------ */
+  public function createNewPassword ($mobile)
+  {
+      //Getting the send_sms.php file
+      require_once 'send_sms.php';
 
+      require_once 'PassHash.php';
+
+      if($this->isTaxiDriverExists($mobile))
+      {
+          $sms = new BeeCabSMSMobileAPI();
+          $prov_password = "prov_".rand(10000, 99999);
+
+          //Encrypting the password
+          $password_hash = PassHash::hash($prov_password);
+          //echo "$prov_password";
+          //echo "$password_hash";
+          //send the new password via send_sms
+          $msg = "Your password has been temporarily changed to: ".$prov_password. " BeeCab";
+          $sms->sendSms("$mobile",$msg);
+
+          //update the record
+          $stmt = $this->conn->prepare("UPDATE taxi_driver set td_password = ? WHERE td_mobile = ?");
+          $stmt->bind_param("ss",$password_hash, $mobile);
+          $res=  $stmt->execute();
+
+          if($res){
+            return UPDATED;
+          }else{
+            return CREATE_FAILED;
+          }
+
+      }else{
+        return CREATE_FAILED;
+      }
+
+  }
+
+  public function updateChangedPassword($password, $td_id)
+  {
+    require_once 'PassHash.php';
+    //Encrypting the password
+    $password_hash = PassHash::hash($password);
+
+    //update the record
+    $stmt = $this->conn->prepare("UPDATE taxi_driver set td_password = ? WHERE id = ?");
+    $stmt->bind_param("ss",$password_hash, $td_id);
+    $res=  $stmt->execute();
+
+    if($res){
+      return UPDATED;
+    }else{
+      return CREATE_FAILED;
+    }
+  }
 
 
 
@@ -414,7 +468,7 @@ class DriverDbHandler {
   //createing the upload url
     $upload_url = 'http://'.$server_ip.'/api/include/'.$upload_path;
 
-    $imageArray = array( 'driver'=>$upload_url."driver.jpg" , 'driver2'=> $upload_url."driver2.jpg",'car_back' => $upload_url."car_back.jpg" );
+    $imageArray = array( 'driver'=>$upload_url."driver.png" , 'driver2'=> $upload_url."driver2.png",'car_back' => $upload_url."car_back.png" );
     $response = array();
 
 
